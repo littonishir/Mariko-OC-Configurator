@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Mariko OC 配置助手</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="shell">
+        <header class="hero">
+            <div class="eyebrow"><span></span> Horizon-OC 调校工具</div>
+            <h1>星野無上<br><strong>极限超频配置生成器</strong></h1>
+            <p>输入 Speedo 与 RAM 颗粒，生成掌机或插电场景的 CPU、GPU、RAM 建议。结果基于 Mariko OC Guide，不承诺一键稳定。</p>
+        </header>
+
+        <section class="workspace">
+            <div class="left-column">
+                <form id="config-form" class="panel input-panel" novalidate>
+                <div class="panel-heading">
+                    <div>
+                        <span class="step">01</span>
+                        <h2>硬件信息</h2>
+                    </div>
+                    <button class="text-button" type="button" id="fill-example">填入我的设备</button>
+                </div>
+
+                <div class="speedo-grid">
+                    <label>
+                        <span>CPU Speedo</span>
+                        <input name="cpuSpeedo" type="number" min="1200" max="2000" value="1662" inputmode="numeric" required>
+                    </label>
+                    <label>
+                        <span>GPU Speedo</span>
+                        <input name="gpuSpeedo" type="number" min="1200" max="2000" value="1694" inputmode="numeric" required>
+                    </label>
+                    <label>
+                        <span>SoC Speedo</span>
+                        <input name="socSpeedo" type="number" min="1200" max="2000" value="1728" inputmode="numeric" required>
+                    </label>
+                </div>
+
+                <label class="full-field">
+                    <span>RAM Module ID</span>
+                    <input name="ramId" type="text" value="WT:F" list="ram-options" autocomplete="off" required>
+                    <datalist id="ram-options">
+                        <option value="WT:B"></option>
+                        <option value="NEI"></option>
+                        <option value="NEE"></option>
+                        <option value="x267"></option>
+                        <option value="AA-MGCL"></option>
+                        <option value="AA-MGCR"></option>
+                        <option value="WT:E"></option>
+                        <option value="AM-MGCJ"></option>
+                        <option value="WT:F"></option>
+                        <option value="AB-MGCL"></option>
+                        <option value="NME"></option>
+                    </datalist>
+                </label>
+
+                <div class="choice-row">
+                    <fieldset>
+                        <legend>机型</legend>
+                        <div class="segmented">
+                            <label><input type="radio" name="model" value="regular" checked><span>续航版 / OLED</span></label>
+                            <label><input type="radio" name="model" value="lite"><span>Switch Lite</span></label>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>场景</legend>
+                        <div class="segmented">
+                            <label><input type="radio" name="mode" value="handheld" checked><span>掌机</span></label>
+                            <label><input type="radio" name="mode" value="plugged"><span>插电 / 底座</span></label>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <fieldset>
+                    <legend>目标</legend>
+                    <div class="segmented">
+                        <label><input type="radio" name="goal" value="balanced" checked><span>指南安全上限</span></label>
+                        <label><input type="radio" name="goal" value="performance"><span>进阶性能</span></label>
+                    </div>
+                </fieldset>
+
+                <div id="form-error" class="form-error" role="alert" hidden></div>
+                <button class="primary-button" type="submit">生成配置 <span>→</span></button>
+
+                </form>
+
+                <aside class="panel community-card" aria-label="交流社群">
+                    <span class="community-title">交流社群</span>
+                    <div><span>阿抖群</span><strong>912250885031</strong></div>
+                    <div><span>阿Q群</span><strong>281559687</strong></div>
+                </aside>
+            </div>
+
+            <section id="result" class="panel result-panel" aria-live="polite">
+                <div class="empty-state">
+                    <div class="dial"><span>OC</span></div>
+                    <h2>等待生成</h2>
+                    <p>建议从安全起点逐项测试，不要同时拉满 CPU、GPU 与 RAM。</p>
+                </div>
+            </section>
+        </section>
+
+        <footer>
+            <p>数据依据 Mariko OC Guide。超频存在硬件与数据风险，配置只用于辅助判断。</p>
+        </footer>
+    </main>
+
+    <template id="result-template">
+        <div class="result-content">
+            <div class="panel-heading result-heading">
+                <div>
+                    <span class="step">02</span>
+                    <h2>推荐配置</h2>
+                </div>
+                <div class="result-actions">
+                    <button class="copy-button" type="button">复制结果</button>
+                    <button class="save-image-button" type="button">保存成长图</button>
+                </div>
+            </div>
+            <div class="profile-meta"></div>
+            <div class="diagnosis"></div>
+            <div class="clock-strip"></div>
+            <div class="config-sections"></div>
+            <div class="warning-box"></div>
+        </div>
+    </template>
+
+    <script src="configurator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
