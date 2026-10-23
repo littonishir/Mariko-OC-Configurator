@@ -41,8 +41,8 @@ RAM Module ID: WT:F
 
 - 推荐配置区只显示当前可以直接填写的单一值。
 - Speedo 仅用于体质参考；没有明确分档依据时，不直接推导 UV、VMIN 或 RAM 上限。
-- RAM 延迟编辑器按照文档使用 `2133 Latency Max`。
-- 识别到内存颗粒时，应用对应的 Common 时序，并从 `DVB Shift 10` 开始验证。
+- RAM 延迟编辑按照 HOC 2.6.0 中文字段使用 `2133 Latency Max`。
+- 识别到内存颗粒时，应用对应的 Common 时序，并从 `DVB偏移 8` 开始验证；DVB偏移最高为 8。
 - 未识别内存颗粒时，采用保守参数并显示提示，不盲目套用高频配置。
 - 插电 GPU 默认使用 `1152 MHz`；更高频率需要结合电压和稳定性单独验证。
 - 均衡与进阶配置会使用不同的内存时序优化起点。
@@ -87,5 +87,5 @@ node --check configurator.js
 
 ## 资料说明
 
-本工具依据 Mariko OC Guide 及 Horizon-OC 配置条目整理。文档或 Horizon-OC 更新后，
+本工具依据 Mariko OC Guide 及 Horizon-OC 2.6.0-rel 配置条目整理，并参考其简中字段。文档或 Horizon-OC 更新后，
 具体参数名称、范围和行为可能发生变化，请以当前版本实际表现为准。

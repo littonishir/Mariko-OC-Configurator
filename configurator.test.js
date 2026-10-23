@@ -30,10 +30,12 @@ test("续航版掌机配置采用指南安全上限", () => {
     });
     assert.equal(result.cpu.voltageLimit, "1120 mV");
     assert.equal(result.gpu.voltageOffset, "0");
-    assert.equal(result.ram.hpMode, "OFF");
-    assert.equal(result.ram.dvbShift, 10);
+    assert.equal(result.ram.hpMode, "关闭");
+    assert.equal(result.ram.dvbShift, 8);
     assert.equal(result.ram.latencyEditor, "2133 Latency Max");
     assert.equal(result.ram.timingReductions, "Common: (4-4-5) 4-2-6-5-6");
+    assert.match(toText(result), /DVB偏移 8/);
+    assert.doesNotMatch(toText(result), /DVB偏移 10/);
 });
 
 test("Lite 掌机使用更低 CPU GPU 和功耗上限", () => {
@@ -48,7 +50,7 @@ test("未知 RAM 使用保守参数并给出警告", () => {
     assert.equal(result.ram.recognized, false);
     assert.equal(result.clocks.ramTarget, 2400);
     assert.equal(result.ram.dvbShift, 5);
-    assert.equal(result.ram.timingReductions, "保持默认 (Default)");
+    assert.equal(result.ram.timingReductions, "默认");
     assert.match(result.warnings.join("\n"), /未识别 RAM ID/);
 });
 
@@ -83,20 +85,20 @@ test("性能配置文本包含主要参数与风险", () => {
     assert.match(text, /ST 不稳定时/);
     assert.match(text, /再逐级测试到 3066 MHz/);
     assert.match(text, /1228 MHz/);
-    assert.match(text, /CPU UV Table/);
-    assert.match(text, /CPU Max Voltage/);
-    assert.match(text, /CPU Max Clock/);
-    assert.match(text, /CPU Boost Clock/);
-    assert.ok(text.indexOf("CPU Low UV") < text.indexOf("CPU High UV"));
-    assert.ok(text.indexOf("CPU High UV") < text.indexOf("CPU UV Table"));
-    assert.ok(text.indexOf("GPU Undervolt Table") < text.indexOf("GPU VMIN"));
-    assert.ok(text.indexOf("GPU VMIN") < text.indexOf("GPU Maximum Voltage"));
+    assert.match(text, /CPU降压模式/);
+    assert.match(text, /CPU最高电压/);
+    assert.match(text, /CPU最高频率/);
+    assert.match(text, /CPU加速频率/);
+    assert.ok(text.indexOf("CPU低频降压") < text.indexOf("CPU高频降压"));
+    assert.ok(text.indexOf("CPU高频降压") < text.indexOf("CPU降压模式"));
+    assert.ok(text.indexOf("GPU降压模式") < text.indexOf("GPU最低电压"));
+    assert.ok(text.indexOf("GPU最低电压") < text.indexOf("GPU最高电压"));
     assert.doesNotMatch(text, /GPU Scheduling Override|GPU DVFS Mode|GPU DVFS Offset/);
-    assert.ok(text.indexOf("DVB Shift") < text.indexOf("SoC Max Volt"));
-    assert.ok(text.indexOf("SoC Max Volt") < text.indexOf("HP Mode"));
-    assert.ok(text.indexOf("RAM VDD2 Voltage") < text.indexOf("RAM VDDQ Voltage"));
-    assert.ok(text.indexOf("Step Mode") < text.indexOf("RAM Max Clock"));
-    assert.ok(text.indexOf("RAM Latency Editor") < text.indexOf("RAM Timing Reductions"));
+    assert.ok(text.indexOf("DVB偏移") < text.indexOf("SoC最高电压"));
+    assert.ok(text.indexOf("SoC最高电压") < text.indexOf("高性能模式"));
+    assert.ok(text.indexOf("内存VDD2电压") < text.indexOf("内存VDDQ电压"));
+    assert.ok(text.indexOf("步进模式") < text.indexOf("内存最高频率"));
+    assert.ok(text.indexOf("内存延迟编辑") < text.indexOf("内存时序优化"));
     assert.match(text, /数据风险|损坏/);
 });
 

@@ -59,31 +59,31 @@
 
         root.querySelector(".config-sections").innerHTML = [
             section("处理器", "CPU", [
-                row("CPU 低压降压 (CPU Low UV)", result.cpu.lowUvStart),
-                row("CPU 高压降压 (CPU High UV)", result.cpu.highUvStart),
-                row("CPU 降压表 (CPU UV Table)", `${result.cpu.uvTable} MHz 分界频率 (Tbreak)`),
-                row("CPU 低压最低电压 (CPU Low VMIN)", result.cpu.lowVmin),
-                row("CPU 高压最低电压 (CPU High VMIN)", result.cpu.highVmin),
-                row("CPU 最大电压 (CPU Max Voltage)", result.cpu.voltageLimit),
-                row("CPU 最大频率 (CPU Max Clock)", `${result.clocks.cpu} MHz`),
-                row("CPU 超频频率 (CPU Boost Clock)", `${result.cpu.boostClock} MHz`)
+                row("CPU低频降压", result.cpu.lowUvStart),
+                row("CPU高频降压", result.cpu.highUvStart),
+                row("CPU降压模式", `${result.cpu.uvTable} MHz 分界频率`),
+                row("CPU低频最低电压", result.cpu.lowVmin),
+                row("CPU高频最低电压", result.cpu.highVmin),
+                row("CPU最高电压", result.cpu.voltageLimit),
+                row("CPU最高频率", `${result.clocks.cpu} MHz`),
+                row("CPU加速频率", `${result.cpu.boostClock} MHz`)
             ]),
             section("图形处理器", "GPU", [
-                row("GPU 降压表 (GPU Undervolt Table)", result.gpu.table),
-                row("GPU 最低电压 (GPU VMIN)", result.gpu.vmin),
-                row("GPU 最大电压 (GPU Maximum Voltage)", result.gpu.vmax),
-                row("GPU 电压偏移 (GPU Voltage Offset)", result.gpu.voltageOffset)
+                row("GPU降压模式", result.gpu.table),
+                row("GPU最低电压", result.gpu.vmin),
+                row("GPU最高电压", result.gpu.vmax),
+                row("GPU电压偏移", result.gpu.voltageOffset)
             ]),
             section("内存", "RAM", [
-                row("DVB 偏移 (DVB Shift)", result.ram.dvbShift),
-                row("SoC 最大电压 (SoC Max Volt)", result.ram.socVmax),
-                row("高性能模式 (HP Mode)", result.ram.hpMode),
-                row("内存 VDD2 电压 (RAM VDD2 Voltage)", result.ram.vdd2),
-                row("内存 VDDQ 电压 (RAM VDDQ Voltage)", result.ram.vddq),
-                row("步进模式 (Step Mode)", result.ram.stepMode),
-                row("内存最大频率 (RAM Max Clock)", result.ram.maxClock),
-                row("内存延迟编辑器 (RAM Latency Editor)", result.ram.latencyEditor),
-                row("内存时序优化 (RAM Timing Reductions)", result.ram.timingReductions)
+                row("DVB偏移", result.ram.dvbShift),
+                row("SoC最高电压", result.ram.socVmax),
+                row("高性能模式", result.ram.hpMode),
+                row("内存VDD2电压", result.ram.vdd2),
+                row("内存VDDQ电压", result.ram.vddq),
+                row("步进模式", result.ram.stepMode),
+                row("内存最高频率", result.ram.maxClock),
+                row("内存延迟编辑", result.ram.latencyEditor),
+                row("内存时序优化", result.ram.timingReductions)
             ])
         ].join("");
 
@@ -99,7 +99,7 @@
 
         root.querySelector(".warning-box").innerHTML = `
             <h3>验证顺序</h3>
-            <ol><li>保持 RAM 1600 MHz，先验证 CPU 降压。</li><li>CPU 稳定后验证 GPU，GPU Voltage Offset 保持 0。</li><li>最后验证 RAM 频率、Common 时序和 DVB 10；不稳定时先恢复默认时序。</li><li>保存 KIP、重启，并监控温度、功耗和实际时钟。</li></ol>
+            <ol><li>保持 RAM 1600 MHz，先验证 CPU 降压。</li><li>CPU 稳定后验证 GPU，GPU电压偏移保持 0。</li><li>最后验证 RAM 频率、Common 时序和 DVB 8；不稳定时先恢复默认时序。</li><li>保存 KIP、重启，并监控温度、功耗和实际时钟。</li></ol>
             <h3>风险提示</h3>
             <ul>${result.warnings.map((warning) => `<li>${warning}</li>`).join("")}</ul>`;
 
@@ -245,33 +245,33 @@
         ]) + 24;
 
         y = drawConfigCard(context, margin, y, contentWidth, colors, "CPU", "处理器配置", [
-            ["CPU 低压降压 (CPU Low UV)", result.cpu.lowUvStart],
-            ["CPU 高压降压 (CPU High UV)", result.cpu.highUvStart],
-            ["CPU 降压表 (CPU UV Table)", `${result.cpu.uvTable} MHz 分界频率 (Tbreak)`],
-            ["CPU 低压最低电压 (CPU Low VMIN)", result.cpu.lowVmin],
-            ["CPU 高压最低电压 (CPU High VMIN)", result.cpu.highVmin],
-            ["CPU 最大电压 (CPU Max Voltage)", result.cpu.voltageLimit],
-            ["CPU 最大频率 (CPU Max Clock)", `${result.clocks.cpu} MHz`],
-            ["CPU 超频频率 (CPU Boost Clock)", `${result.cpu.boostClock} MHz`]
+            ["CPU低频降压", result.cpu.lowUvStart],
+            ["CPU高频降压", result.cpu.highUvStart],
+            ["CPU降压模式", `${result.cpu.uvTable} MHz 分界频率`],
+            ["CPU低频最低电压", result.cpu.lowVmin],
+            ["CPU高频最低电压", result.cpu.highVmin],
+            ["CPU最高电压", result.cpu.voltageLimit],
+            ["CPU最高频率", `${result.clocks.cpu} MHz`],
+            ["CPU加速频率", `${result.cpu.boostClock} MHz`]
         ]) + 18;
 
         y = drawConfigCard(context, margin, y, contentWidth, colors, "GPU", "图形处理器配置", [
-            ["GPU 降压表 (GPU Undervolt Table)", result.gpu.table],
-            ["GPU 最低电压 (GPU VMIN)", result.gpu.vmin],
-            ["GPU 最大电压 (GPU Maximum Voltage)", result.gpu.vmax],
-            ["GPU 电压偏移 (GPU Voltage Offset)", result.gpu.voltageOffset]
+            ["GPU降压模式", result.gpu.table],
+            ["GPU最低电压", result.gpu.vmin],
+            ["GPU最高电压", result.gpu.vmax],
+            ["GPU电压偏移", result.gpu.voltageOffset]
         ]) + 18;
 
         y = drawConfigCard(context, margin, y, contentWidth, colors, "RAM", "内存配置", [
-            ["DVB 偏移 (DVB Shift)", result.ram.dvbShift],
-            ["SoC 最大电压 (SoC Max Volt)", result.ram.socVmax],
-            ["高性能模式 (HP Mode)", result.ram.hpMode],
-            ["内存 VDD2 电压 (RAM VDD2 Voltage)", result.ram.vdd2],
-            ["内存 VDDQ 电压 (RAM VDDQ Voltage)", result.ram.vddq],
-            ["步进模式 (Step Mode)", result.ram.stepMode],
-            ["内存最大频率 (RAM Max Clock)", result.ram.maxClock],
-            ["内存延迟编辑器 (RAM Latency Editor)", result.ram.latencyEditor],
-            ["内存时序优化 (RAM Timing Reductions)", result.ram.timingReductions]
+            ["DVB偏移", result.ram.dvbShift],
+            ["SoC最高电压", result.ram.socVmax],
+            ["高性能模式", result.ram.hpMode],
+            ["内存VDD2电压", result.ram.vdd2],
+            ["内存VDDQ电压", result.ram.vddq],
+            ["步进模式", result.ram.stepMode],
+            ["内存最高频率", result.ram.maxClock],
+            ["内存延迟编辑", result.ram.latencyEditor],
+            ["内存时序优化", result.ram.timingReductions]
         ]) + 18;
 
         const tuningNotes = Object.entries(result.tuningNotes).flatMap(([scope, notes]) => {
@@ -282,7 +282,7 @@
         y = drawListCard(context, margin, y, contentWidth, colors, "验证顺序", [
             "保持 RAM 1600 MHz，先验证 CPU 降压设置。",
             "CPU 稳定后验证 GPU，GPU Voltage Offset 保持 0。",
-            "最后验证 RAM 频率、Common 时序和 DVB 10；不稳定时先恢复默认时序。",
+            "最后验证 RAM 频率、Common 时序和 DVB 8；不稳定时先恢复默认时序。",
             "保存 KIP、重启，并监控温度、功耗和实际时钟。"
         ]) + 18;
         y = drawListCard(context, margin, y, contentWidth, colors, "风险提示", result.warnings) + 42;

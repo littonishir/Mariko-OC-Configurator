@@ -5,6 +5,8 @@
 }(typeof globalThis !== "undefined" ? globalThis : this, function () {
     "use strict";
 
+    const DVB_SHIFT_MAX = 8;
+
     const RAM_PROFILES = [
         {
             id: "WT:B",
@@ -185,9 +187,9 @@
             warnings.push("至少一项 Speedo 高于指南常见范围，请确认录入值无误。");
         }
         if (!isHandheld && isPerformance) {
-            warnings.push("当前配置保守使用 1152 MHz；只有关闭 GPU Scheduling 且确认 1228 MHz 电压低于 800 mV 后，才测试 1228 MHz。");
+            warnings.push("当前配置保守使用 1152 MHz；只有关闭 GPU调度且确认 1228 MHz 电压低于 800 mV 后，才测试 1228 MHz。");
         }
-        if (ramTuningTarget > 3000) warnings.push("后续目标超过 3000 MHz，更容易发生 PLL Drop，必须监控实际 RAM 时钟。");
+        if (ramTuningTarget > 3000) warnings.push("后续目标超过 3000 MHz，更容易发生 PLL掉频，必须监控实际内存时钟。");
         if (isHandheld) warnings.push(`掌机长时间整机功耗建议控制在 ${batteryLimit} W 以下。`);
 
         return {
@@ -217,7 +219,7 @@
                 voltageLimit: "1120 mV"
             },
             gpu: {
-                table: "High UV Table",
+                table: "高降压",
                 vmin: "580 mV",
                 vmax: "800 mV",
                 voltageOffset: "0"
@@ -231,46 +233,46 @@
                 vddq: ram ? `${ram.vddq} mV` : "保持默认/查明颗粒后设置",
                 common: ram ? ram.common : "使用默认 Common Timings",
                 tight: ram ? ram.tight : "暂不使用 ST Timings",
-                dvbShift: ram ? 10 : 5,
-                socVmax: "保持默认 (Default)",
-                hpMode: "OFF",
+                dvbShift: ram ? DVB_SHIFT_MAX : 5,
+                socVmax: "默认",
+                hpMode: "关闭",
                 stepMode: ramStepMode(ramTarget),
                 maxClock: `${ramTarget} MHz`,
                 latencyEditor: "2133 Latency Max",
                 timingReductions: timingPresetValue
                     ? `${timingPresetName}: ${timingPresetValue}`
-                    : "保持默认 (Default)"
+                    : "默认"
             },
             risk: isPerformance ? "进阶调校" : "指南安全上限",
             tuningNotes: {
                 cpu: [
-                    "Low UV 从 4、High UV 从 5 开始逐级验证；不能启动或不稳定时降低 UV 等级。",
-                    "只有 High UV 1 仍不稳定时，才把 CPU UV Table 从 1683 MHz Tbreak 改为 1581 MHz。",
-                    "低频不稳定时可把 CPU Low VMIN 提高到 610-620 mV；高 RAM 频率可能需要 850-870 mV High VMIN。"
+                    "CPU低频降压从 4、CPU高频降压从 5 开始逐级验证；不能启动或不稳定时降低降压等级。",
+                    "只有 CPU高频降压 1 仍不稳定时，才把 CPU降压模式从 1683 MHz 分界频率改为 1581 MHz。",
+                    "低频不稳定时可把 CPU低频最低电压提高到 610-620 mV；高内存频率可能需要 850-870 mV CPU高频最低电压。"
                 ],
                 gpu: [
-                    "GPU Voltage Offset 首轮保持 0；基础配置稳定后再按 5、10、15、20、25 逐级测试，部分 GPU 必须保持 0。",
+                    "GPU电压偏移首轮保持 0；基础配置稳定后再按 5、10、15、20、25 逐级测试，部分 GPU 必须保持 0。",
                     isHandheld
                         ? `当前 ${gpuClock} MHz 是指南给出的掌机安全上限，长时间使用仍需监控整机功耗。`
-                        : "只有在 GPU Scheduling Off 且 1228 MHz 电压低于 800 mV 时才测试 1228 MHz，否则保持 1152 MHz。"
+                        : "只有在 GPU调度关闭且 1228 MHz 电压低于 800 mV 时才测试 1228 MHz，否则保持 1152 MHz。"
                 ],
                 ram: [
                     ram
-                        ? `已按文档应用 ${ram.id} ${timingPresetName} 时序，并将 DVB Shift 设为 10；先验证该组合稳定性。`
-                        : "未识别 RAM 颗粒，保持默认 Timing Reductions，并使用 DVB Shift 5。",
+                        ? `已按文档应用 ${ram.id} ${timingPresetName} 时序，并将 DVB偏移设为 ${DVB_SHIFT_MAX}；先验证该组合稳定性。`
+                        : "未识别 RAM 颗粒，保持默认内存时序优化，并使用 DVB偏移 5。",
                     isPerformance && ramTuningTarget > ramTarget
                         ? `2400 MHz 基线稳定后，再逐级测试到 ${ramTuningTarget} MHz；该值是调参目标，不是稳定保证。`
                         : isHandheld
                             ? "当前 2400 MHz 是指南给出的掌机续航与性能平衡点。"
                             : "插电模式仍从 2400 MHz 保守基线开始，确认稳定后再单独提高频率。",
-                    "文档默认在 1866 MHz 以上使用 2133 tRWL，因此 RAM Latency Editor 使用 2133 Latency Max。",
+                    "文档默认在 1866 MHz 以上使用 2133 tRWL，因此内存延迟编辑使用 2133 Latency Max。",
                     ram
                         ? isPerformance
                             ? "ST 不稳定时，按 t8 → t1 → t2 → t3 → t6 → t7 → t4 → t5 顺序逐项放宽；仍不稳定则退回 Common。"
                             : `Common 稳定后可测试 ST 时序 ${ram.tight}；失败时退回 Common。`
                         : "识别 RAM 颗粒后再测试对应的 Common/ST 时序。",
-                    "Common/ST 稳定后再把 DVB Shift 从 10 逐步降低到 2-4。",
-                    "稳定后再开启 HP Mode；2533 MHz 可能需要更宽松时序，3000 MHz 以上需监控 PLL Drop。"
+                    `Common/ST 稳定后再把 DVB偏移从 ${DVB_SHIFT_MAX} 逐步降低到 2-4。`,
+                    "稳定后再开启高性能模式；2533 MHz 可能需要更宽松时序，3000 MHz 以上需监控 PLL掉频。"
                 ]
             },
             warnings
@@ -284,9 +286,9 @@
             `场景: ${result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED"} · ${result.input.mode === "handheld" ? "掌机" : "插电/底座"} · ${result.risk}`,
             "",
             `[时钟] CPU ${result.clocks.cpu} MHz / GPU ${result.clocks.gpu} MHz / RAM ${result.clocks.ramStart} → ${result.clocks.ramTarget} MHz`,
-            `[CPU] 低压降压 (CPU Low UV) ${result.cpu.lowUvStart} / 高压降压 (CPU High UV) ${result.cpu.highUvStart} / 降压表 (CPU UV Table) ${result.cpu.uvTable} MHz 分界频率 (Tbreak) / 低压最低电压 (CPU Low VMIN) ${result.cpu.lowVmin} / 高压最低电压 (CPU High VMIN) ${result.cpu.highVmin} / 最大电压 (CPU Max Voltage) ${result.cpu.voltageLimit} / 最大频率 (CPU Max Clock) ${result.clocks.cpu} MHz / 超频频率 (CPU Boost Clock) ${result.cpu.boostClock} MHz`,
-            `[GPU] 降压表 (GPU Undervolt Table) ${result.gpu.table} / 最低电压 (GPU VMIN) ${result.gpu.vmin} / 最大电压 (GPU Maximum Voltage) ${result.gpu.vmax} / 电压偏移 (GPU Voltage Offset) ${result.gpu.voltageOffset}`,
-            `[RAM] DVB 偏移 (DVB Shift) ${result.ram.dvbShift} / SoC 最大电压 (SoC Max Volt) ${result.ram.socVmax} / 高性能模式 (HP Mode) ${result.ram.hpMode} / 内存 VDD2 电压 (RAM VDD2 Voltage) ${result.ram.vdd2} / 内存 VDDQ 电压 (RAM VDDQ Voltage) ${result.ram.vddq} / 步进模式 (Step Mode) ${result.ram.stepMode} / 内存最大频率 (RAM Max Clock) ${result.ram.maxClock} / 内存延迟编辑器 (RAM Latency Editor) ${result.ram.latencyEditor} / 内存时序优化 (RAM Timing Reductions) ${result.ram.timingReductions}`,
+            `[CPU] CPU低频降压 ${result.cpu.lowUvStart} / CPU高频降压 ${result.cpu.highUvStart} / CPU降压模式 ${result.cpu.uvTable} MHz 分界频率 / CPU低频最低电压 ${result.cpu.lowVmin} / CPU高频最低电压 ${result.cpu.highVmin} / CPU最高电压 ${result.cpu.voltageLimit} / CPU最高频率 ${result.clocks.cpu} MHz / CPU加速频率 ${result.cpu.boostClock} MHz`,
+            `[GPU] GPU降压模式 ${result.gpu.table} / GPU最低电压 ${result.gpu.vmin} / GPU最高电压 ${result.gpu.vmax} / GPU电压偏移 ${result.gpu.voltageOffset}`,
+            `[RAM] DVB偏移 ${result.ram.dvbShift} / SoC最高电压 ${result.ram.socVmax} / 高性能模式 ${result.ram.hpMode} / 内存VDD2电压 ${result.ram.vdd2} / 内存VDDQ电压 ${result.ram.vddq} / 步进模式 ${result.ram.stepMode} / 内存最高频率 ${result.ram.maxClock} / 内存延迟编辑 ${result.ram.latencyEditor} / 内存时序优化 ${result.ram.timingReductions}`,
             "",
             "后续调参说明:",
             ...Object.entries(result.tuningNotes).flatMap(([scope, notes]) => notes.map((note) => `- [${scope.toUpperCase()}] ${note}`)),
@@ -296,5 +298,5 @@
         ].join("\n");
     }
 
-    return { RAM_PROFILES, findRamProfile, recommend, toText };
+    return { DVB_SHIFT_MAX, RAM_PROFILES, findRamProfile, recommend, toText };
 }));
