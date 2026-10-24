@@ -107,3 +107,28 @@ test("拒绝不合理的 Speedo", () => {
     assert.equal(result.ok, false);
     assert.match(result.errors[0], /1200 到 2000/);
 });
+
+test("复制结果按安全设置、RAM、CPU、GPU展示并保留原参数", () => {
+    const text = toText(recommend(base));
+    const sections = text.split("\n").filter((line) => /^\[(安全设置|RAM|CPU|GPU)\]/.test(line));
+    assert.equal(sections.length, 4);
+    assert.match(sections[0], /^\[安全设置\] 解锁频率 建议打开$/);
+    assert.match(sections[1], /^\[RAM\] DVB偏移 8/);
+    assert.match(sections[2], /^\[CPU\] CPU低频降压 4/);
+    assert.match(sections[3], /^\[GPU\] GPU降压模式 高降压/);
+    assert.match(sections[1], /内存最高频率 2400 MHz/);
+    assert.match(sections[2], /CPU最高频率 1963 MHz/);
+    assert.match(sections[3], /GPU电压偏移 0/);
+});
+
+test("未知内存与Lite进阶场景仍按相同顺序显示安全建议", () => {
+    const text = toText(recommend({ ...base, ramId: "UNKNOWN", model: "lite", mode: "plugged", goal: "performance" }));
+    const sections = text.match(/^\[(安全设置|RAM|CPU|GPU)\].*$/gm);
+    assert.equal(sections.length, 4);
+    assert.match(sections[0], /^\[安全设置\] 解锁频率 建议打开$/);
+    assert.match(sections[1], /^\[RAM\] DVB偏移 5/);
+    assert.match(sections[2], /^\[CPU\]/);
+    assert.match(sections[3], /^\[GPU\]/);
+    assert.match(text, /未识别 RAM ID/);
+    assert.match(text, /稳定性保证/);
+});

@@ -279,6 +279,51 @@
         };
     }
 
+    function configSections(result) {
+        return [
+            {
+                title: "安全设置", kicker: "SAFE", textLabel: "安全设置",
+                rows: [["解锁频率", "建议打开"]]
+            },
+            {
+                title: "内存", kicker: "RAM", textLabel: "RAM",
+                rows: [
+                    ["DVB偏移", result.ram.dvbShift],
+                    ["SoC最高电压", result.ram.socVmax],
+                    ["高性能模式", result.ram.hpMode],
+                    ["内存VDD2电压", result.ram.vdd2],
+                    ["内存VDDQ电压", result.ram.vddq],
+                    ["步进模式", result.ram.stepMode],
+                    ["内存最高频率", result.ram.maxClock],
+                    ["内存延迟编辑", result.ram.latencyEditor],
+                    ["内存时序优化", result.ram.timingReductions]
+                ]
+            },
+            {
+                title: "处理器", kicker: "CPU", textLabel: "CPU",
+                rows: [
+                    ["CPU低频降压", result.cpu.lowUvStart],
+                    ["CPU高频降压", result.cpu.highUvStart],
+                    ["CPU降压模式", `${result.cpu.uvTable} MHz 分界频率`],
+                    ["CPU低频最低电压", result.cpu.lowVmin],
+                    ["CPU高频最低电压", result.cpu.highVmin],
+                    ["CPU最高电压", result.cpu.voltageLimit],
+                    ["CPU最高频率", `${result.clocks.cpu} MHz`],
+                    ["CPU加速频率", `${result.cpu.boostClock} MHz`]
+                ]
+            },
+            {
+                title: "图形处理器", kicker: "GPU", textLabel: "GPU",
+                rows: [
+                    ["GPU降压模式", result.gpu.table],
+                    ["GPU最低电压", result.gpu.vmin],
+                    ["GPU最高电压", result.gpu.vmax],
+                    ["GPU电压偏移", result.gpu.voltageOffset]
+                ]
+            }
+        ];
+    }
+
     function toText(result) {
         if (!result || !result.ok) return "无法生成配置";
         return [
@@ -286,9 +331,8 @@
             `场景: ${result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED"} · ${result.input.mode === "handheld" ? "掌机" : "插电/底座"} · ${result.risk}`,
             "",
             `[时钟] CPU ${result.clocks.cpu} MHz / GPU ${result.clocks.gpu} MHz / RAM ${result.clocks.ramStart} → ${result.clocks.ramTarget} MHz`,
-            `[CPU] CPU低频降压 ${result.cpu.lowUvStart} / CPU高频降压 ${result.cpu.highUvStart} / CPU降压模式 ${result.cpu.uvTable} MHz 分界频率 / CPU低频最低电压 ${result.cpu.lowVmin} / CPU高频最低电压 ${result.cpu.highVmin} / CPU最高电压 ${result.cpu.voltageLimit} / CPU最高频率 ${result.clocks.cpu} MHz / CPU加速频率 ${result.cpu.boostClock} MHz`,
-            `[GPU] GPU降压模式 ${result.gpu.table} / GPU最低电压 ${result.gpu.vmin} / GPU最高电压 ${result.gpu.vmax} / GPU电压偏移 ${result.gpu.voltageOffset}`,
-            `[RAM] DVB偏移 ${result.ram.dvbShift} / SoC最高电压 ${result.ram.socVmax} / 高性能模式 ${result.ram.hpMode} / 内存VDD2电压 ${result.ram.vdd2} / 内存VDDQ电压 ${result.ram.vddq} / 步进模式 ${result.ram.stepMode} / 内存最高频率 ${result.ram.maxClock} / 内存延迟编辑 ${result.ram.latencyEditor} / 内存时序优化 ${result.ram.timingReductions}`,
+            ...configSections(result).map(({ textLabel, rows }) =>
+                `[${textLabel}] ${rows.map(([label, value]) => `${label} ${value}`).join(" / ")}`),
             "",
             "后续调参说明:",
             ...Object.entries(result.tuningNotes).flatMap(([scope, notes]) => notes.map((note) => `- [${scope.toUpperCase()}] ${note}`)),
@@ -298,5 +342,5 @@
         ].join("\n");
     }
 
-    return { DVB_SHIFT_MAX, RAM_PROFILES, findRamProfile, recommend, toText };
+    return { DVB_SHIFT_MAX, RAM_PROFILES, findRamProfile, recommend, configSections, toText };
 }));

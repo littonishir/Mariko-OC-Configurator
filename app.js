@@ -57,35 +57,9 @@
             metric("RAM 目标", result.clocks.ramTarget, "MHz")
         ].join("");
 
-        root.querySelector(".config-sections").innerHTML = [
-            section("处理器", "CPU", [
-                row("CPU低频降压", result.cpu.lowUvStart),
-                row("CPU高频降压", result.cpu.highUvStart),
-                row("CPU降压模式", `${result.cpu.uvTable} MHz 分界频率`),
-                row("CPU低频最低电压", result.cpu.lowVmin),
-                row("CPU高频最低电压", result.cpu.highVmin),
-                row("CPU最高电压", result.cpu.voltageLimit),
-                row("CPU最高频率", `${result.clocks.cpu} MHz`),
-                row("CPU加速频率", `${result.cpu.boostClock} MHz`)
-            ]),
-            section("图形处理器", "GPU", [
-                row("GPU降压模式", result.gpu.table),
-                row("GPU最低电压", result.gpu.vmin),
-                row("GPU最高电压", result.gpu.vmax),
-                row("GPU电压偏移", result.gpu.voltageOffset)
-            ]),
-            section("内存", "RAM", [
-                row("DVB偏移", result.ram.dvbShift),
-                row("SoC最高电压", result.ram.socVmax),
-                row("高性能模式", result.ram.hpMode),
-                row("内存VDD2电压", result.ram.vdd2),
-                row("内存VDDQ电压", result.ram.vddq),
-                row("步进模式", result.ram.stepMode),
-                row("内存最高频率", result.ram.maxClock),
-                row("内存延迟编辑", result.ram.latencyEditor),
-                row("内存时序优化", result.ram.timingReductions)
-            ])
-        ].join("");
+        root.querySelector(".config-sections").innerHTML = window.MarikoConfigurator.configSections(result)
+            .map(({ title, kicker, rows }) => section(title, kicker, rows.map(([label, value]) => row(label, value))))
+            .join("");
 
         const tuningItems = Object.entries(result.tuningNotes).flatMap(([scope, notes]) => {
             return notes.map((note) => `<li><strong>${scope.toUpperCase()}</strong>${escapeHtml(note)}</li>`);
@@ -244,35 +218,10 @@
             ["RAM 目标频率", result.clocks.ramTarget, "MHz"]
         ]) + 24;
 
-        y = drawConfigCard(context, margin, y, contentWidth, colors, "CPU", "处理器配置", [
-            ["CPU低频降压", result.cpu.lowUvStart],
-            ["CPU高频降压", result.cpu.highUvStart],
-            ["CPU降压模式", `${result.cpu.uvTable} MHz 分界频率`],
-            ["CPU低频最低电压", result.cpu.lowVmin],
-            ["CPU高频最低电压", result.cpu.highVmin],
-            ["CPU最高电压", result.cpu.voltageLimit],
-            ["CPU最高频率", `${result.clocks.cpu} MHz`],
-            ["CPU加速频率", `${result.cpu.boostClock} MHz`]
-        ]) + 18;
-
-        y = drawConfigCard(context, margin, y, contentWidth, colors, "GPU", "图形处理器配置", [
-            ["GPU降压模式", result.gpu.table],
-            ["GPU最低电压", result.gpu.vmin],
-            ["GPU最高电压", result.gpu.vmax],
-            ["GPU电压偏移", result.gpu.voltageOffset]
-        ]) + 18;
-
-        y = drawConfigCard(context, margin, y, contentWidth, colors, "RAM", "内存配置", [
-            ["DVB偏移", result.ram.dvbShift],
-            ["SoC最高电压", result.ram.socVmax],
-            ["高性能模式", result.ram.hpMode],
-            ["内存VDD2电压", result.ram.vdd2],
-            ["内存VDDQ电压", result.ram.vddq],
-            ["步进模式", result.ram.stepMode],
-            ["内存最高频率", result.ram.maxClock],
-            ["内存延迟编辑", result.ram.latencyEditor],
-            ["内存时序优化", result.ram.timingReductions]
-        ]) + 18;
+        window.MarikoConfigurator.configSections(result).forEach(({ title, kicker, rows }) => {
+            const imageTitle = kicker === "SAFE" ? title : `${title}配置`;
+            y = drawConfigCard(context, margin, y, contentWidth, colors, kicker, imageTitle, rows) + 18;
+        });
 
         const tuningNotes = Object.entries(result.tuningNotes).flatMap(([scope, notes]) => {
             return notes.map((note) => `[${scope.toUpperCase()}] ${note}`);
