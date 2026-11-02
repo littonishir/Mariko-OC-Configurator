@@ -132,3 +132,8 @@ CVB 计算形式参考 [NVIDIA Tegra cvb.c](https://github.com/OE4T/linux-tegra-
 缩放参数参照[对应驱动](https://github.com/OE4T/linux-tegra-4.9/blob/oe4t-patches-l4t-r32.7.4/drivers/soc/tegra/tegra210-dvfs.c)。
 上述 HOC、Hekate 与 NVIDIA/Linux 来源按各自 GPL-2.0 许可提供；本项目对数据与公式注明出处，不把模型输出称为上游官方配置。
 其他版本应重新核对参数，不能直接沿用本版结论。
+
+## 发布
+
+修改 JS／CSS 后，同时更新 `index.html` 中四处资源版本参数（`?v=...`），避免旧浏览器缓存混用新页面与旧推荐逻辑。
+推送后既要核对 Pages 部署提交，也要打开线上页面生成一次配置，确认实际运行的是新规则。
