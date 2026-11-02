@@ -5,8 +5,7 @@
     const resultPanel = document.querySelector("#result");
     const template = document.querySelector("#result-template");
     const errorBox = document.querySelector("#form-error");
-    const { HISTORY_NOTICE, BASELINE_NOTE } = window.MarikoConfigurator;
-    document.querySelector("#update-notice p").textContent = HISTORY_NOTICE;
+    const { BASELINE_NOTE } = window.MarikoConfigurator;
     let latestResult = null;
 
     function escapeHtml(value) {
@@ -42,8 +41,6 @@
         const model = result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED";
         const mode = window.MarikoConfigurator.MODE_LABELS[result.input.mode];
         root.querySelector(".profile-meta").innerHTML = `<span>${model}</span><span>${mode}</span><span>${result.risk}</span>`;
-        const summaries = window.MarikoConfigurator.presetSummaryRows(result);
-        root.querySelector(".preset-comparison").innerHTML = `<table><caption>两套配置对比（MHz）</caption><thead><tr><th>方案</th><th>RAM</th><th>CPU</th><th>GPU</th></tr></thead><tbody>${summaries.map(([name, ram, cpu, gpu]) => `<tr class="${name === result.risk ? "selected" : ""}"><th>${name}</th><td>${ram}</td><td>${cpu}</td><td>${gpu}</td></tr>`).join("")}</tbody></table><p>下方详细参数对应：${result.risk}</p>`;
 
         root.querySelector(".diagnosis").innerHTML = [
             ["CPU", result.input.cpuSpeedo, result.diagnosis.cpu],
@@ -56,11 +53,10 @@
             </div>`).join("");
 
         root.querySelector(".clock-strip").innerHTML = [
-            metric("RAM 建议频率", result.clocks.ramTarget, "MHz"),
             metric("CPU 建议频率", result.clocks.cpu, "MHz"),
-            metric("GPU 建议频率", result.clocks.gpu, "MHz")
+            metric("GPU 建议频率", result.clocks.gpu, "MHz"),
+            metric("RAM 建议频率", result.clocks.ramTarget, "MHz")
         ].join("");
-        root.querySelector(".baseline-note").textContent = BASELINE_NOTE;
 
         root.querySelector(".config-sections").innerHTML = window.MarikoConfigurator.configSections(result)
             .map(({ title, kicker, rows }) => section(title, kicker, rows.map(([label, value]) => row(label, value))))
@@ -71,8 +67,8 @@
         }).join("");
         root.querySelector(".config-sections").insertAdjacentHTML("afterend", `
             <section class="tuning-box">
-                <h3>选档依据与调整顺序</h3>
-                <p>运行档在调频器中设置，KIP 参数在对应页面设置。先保留可启动的配置，以下步骤仅在基线验证后逐项尝试。</p>
+                <h3>后续调参说明</h3>
+                <p>${escapeHtml(BASELINE_NOTE)}</p>
                 <ul>${window.MarikoConfigurator.selectionNotes(result).map(note => `<li>${escapeHtml(note)}</li>`).join("")}</ul>
                 <ul>${tuningItems}</ul>
             </section>`);
@@ -209,12 +205,8 @@
         context.fillText("HOC 2.6.0 · 2026-11-02 修正版 · 按 Speedo、机型和内存规格选档", margin, y);
         y += 52;
 
-        y = drawListCard(context, margin, y, contentWidth, colors, "旧版配置提醒", [HISTORY_NOTICE]) + 18;
-        y = drawListCard(context, margin, y, contentWidth, colors, "应用前请确认", [BASELINE_NOTE]) + 18;
-
         const model = result.input.model === "lite" ? "Switch Lite" : "OLED / 续航版";
         const mode = window.MarikoConfigurator.MODE_LABELS[result.input.mode];
-        y = drawConfigCard(context, margin, y, contentWidth, colors, "PLAN", "两套配置对比", window.MarikoConfigurator.presetSummaryRows(result).map(([name, ram, cpu, gpu]) => [name, `RAM ${ram} / CPU ${cpu} / GPU ${gpu} MHz`])) + 18;
         y = drawSummaryCard(context, {
             x: margin,
             y,
@@ -230,9 +222,9 @@
         }) + 24;
 
         y = drawClockCard(context, margin, y, contentWidth, colors, [
-            ["RAM 建议频率", result.clocks.ramTarget, "MHz"],
             ["CPU 建议频率", result.clocks.cpu, "MHz"],
-            ["GPU 建议频率", result.clocks.gpu, "MHz"]
+            ["GPU 建议频率", result.clocks.gpu, "MHz"],
+            ["RAM 建议频率", result.clocks.ramTarget, "MHz"]
         ]) + 24;
 
         window.MarikoConfigurator.configSections(result).forEach(({ title, kicker, rows }) => {
@@ -243,8 +235,7 @@
         const tuningNotes = Object.entries(result.tuningNotes).flatMap(([scope, notes]) => {
             return notes.map((note) => `[${scope.toUpperCase()}] ${note}`);
         });
-        y = drawListCard(context, margin, y, contentWidth, colors, "选档依据", window.MarikoConfigurator.selectionNotes(result)) + 18;
-        y = drawListCard(context, margin, y, contentWidth, colors, "调整顺序", tuningNotes) + 18;
+        y = drawListCard(context, margin, y, contentWidth, colors, "后续调参说明", [BASELINE_NOTE, ...window.MarikoConfigurator.selectionNotes(result), ...tuningNotes]) + 18;
 
         y = drawListCard(context, margin, y, contentWidth, colors, "验证顺序与回退", result.validationSteps) + 18;
         y = drawListCard(context, margin, y, contentWidth, colors, "风险提示", result.warnings) + 42;

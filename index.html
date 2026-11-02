@@ -5,20 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <title>星野無上HOC配置助手</title>
-    <link rel="stylesheet" href="styles.css?v=20261102-two-presets">
+    <link rel="stylesheet" href="styles.css?v=local-guide-performance-20261102">
 </head>
 <body>
     <main class="shell">
         <header class="hero">
             <div class="eyebrow"><span></span> Horizon-OC 调校工具</div>
             <h1>星野無上<br><strong>极限超频配置生成器</strong></h1>
-            <p>记录 Speedo 与 RAM 颗粒，先从 HOC 2.6.0 默认参数和较低运行档排查，再逐项验证超频。Speedo 不能单独推算稳定频率或降压值。</p>
+            <p>输入 Speedo 与 RAM 颗粒，生成掌机或插电场景的 CPU、GPU、RAM 建议。结果基于 Mariko OC Guide，不承诺一键稳定。</p>
         </header>
-
-        <aside id="update-notice" class="update-notice" aria-labelledby="notice-title">
-            <h2 id="notice-title">2026-11-02 修正：请停用旧推荐</h2>
-            <p>旧版统一推荐的降压、紧时序和高频已有无法启动反馈。请先回退到自己已验证可启动的配置，再逐项排查。</p>
-        </aside>
 
         <section class="workspace">
             <div class="left-column">
@@ -76,17 +71,16 @@
                         <legend>场景</legend>
                         <div class="segmented">
                             <label><input type="radio" name="mode" value="handheld" checked><span>掌机</span></label>
-                            <label><input type="radio" name="mode" value="plugged"><span>普通 USB 插电</span></label>
-                            <label><input type="radio" name="mode" value="docked"><span>官方充电器 / 底座</span></label>
+                            <label><input type="radio" name="mode" value="plugged"><span>插电 / 底座</span></label>
                         </div>
                     </fieldset>
                 </div>
 
                 <fieldset>
-                    <legend>配置方案</legend>
+                    <legend>目标</legend>
                     <div class="segmented">
-                        <label><input type="radio" name="goal" value="balanced" checked><span>保守配置</span></label>
-                        <label><input type="radio" name="goal" value="performance"><span>进阶配置</span></label>
+                        <label><input type="radio" name="goal" value="balanced" checked><span>指南安全上限</span></label>
+                        <label><input type="radio" name="goal" value="performance"><span>进阶性能</span></label>
                     </div>
                 </fieldset>
 
@@ -106,13 +100,13 @@
                 <div class="empty-state">
                     <div class="dial"><span>OC</span></div>
                     <h2>等待生成</h2>
-                    <p>先保留可启动的配置。运行档与 KIP 上限分开设置，不要同时调整降压、内存频率与时序。</p>
+                    <p>建议从安全起点逐项测试，不要同时拉满 CPU、GPU 与 RAM。</p>
                 </div>
             </section>
         </section>
 
         <footer>
-            <p>适用 Mariko / HOC 2.6.0。HOC 默认不等于 HOS 原厂，也不保证稳定；超频和降压存在硬件与数据风险。</p>
+            <p>数据依据 Mariko OC Guide。超频存在硬件与数据风险，配置只用于辅助判断。</p>
         </footer>
     </main>
 
@@ -129,17 +123,15 @@
                 </div>
             </div>
             <div class="profile-meta"></div>
-            <div class="preset-comparison"></div>
             <div class="diagnosis"></div>
-            <p class="baseline-note"></p>
             <div class="clock-strip"></div>
             <div class="config-sections"></div>
             <div class="warning-box"></div>
         </div>
     </template>
 
-    <script src="frequency-plan.js?v=20261102-two-presets"></script>
-    <script src="configurator.js?v=20261102-two-presets"></script>
-    <script src="app.js?v=20261102-two-presets"></script>
+    <script src="frequency-plan.js?v=local-guide-performance-20261102"></script>
+    <script src="configurator.js?v=local-guide-performance-20261102"></script>
+    <script src="app.js?v=local-guide-performance-20261102"></script>
 </body>
 </html>

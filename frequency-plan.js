@@ -11,7 +11,9 @@
         [1020, 1008066, -24205, 113], [1224, 1008066, -24205, 113],
         [1428, 1008066, -24205, 113], [1581, 1008066, -24205, 113],
         [1683, 1329076, -29795, 113], [1785, 1386213, -30655, 113],
-        [1887, 1445416, -31515, 113], [1963.5, 1490873, -32155, 113]
+        [1887, 1445416, -31515, 113], [1963.5, 1490873, -32155, 113],
+        [2091, 1580725, -33235, 113], [2193, 1580725, -33235, 113],
+        [2295, 1635431, -34095, 113], [2397, 1702903, -34955, 113]
     ];
     const GPU = [
         [384, 758712, -7304, -552, 119, -3750, -2],
@@ -54,38 +56,53 @@
 
     function selectFrequencies(input, ram) {
         const handheld = input.mode === "handheld";
-        const baseline = { cpu: 1020, gpu: handheld ? 384 : 768, ramStart: 1600, ramTarget: 1600 };
+        const lite = input.model === "lite";
+        const baseline = { cpu: handheld ? 1581 : 1785, gpu: handheld ? 614.4 : 768, ramStart: 1866, ramTarget: 1866 };
         // 以下预算是本助手的选档策略，不是上游安全电压或新增电压设置。
-        const cpuBudget = handheld ? (input.model === "lite" ? 900 : 950) : 1000;
-        const gpuBudget = handheld ? 610 : (input.mode === "plugged" ? 700 : 750);
-        const gpuCap = handheld ? (input.model === "lite" ? 614.4 : 768)
-            : (input.mode === "plugged" ? 998.4 : 1075.2);
-        const cpuPoints = CPU.filter(point => estimateCpuMv(point, input.cpuSpeedo) <= cpuBudget);
+        const cpuBudget = handheld ? (lite ? 950 : 1000) : (lite ? 1050 : 1100);
+        const cpuCap = handheld ? (lite ? 1785 : 1963.5) : (lite ? 2193 : 2397);
+        const gpuBudget = handheld ? (lite ? 625 : 650) : (lite ? 700 : 750);
+        const gpuCap = handheld ? (lite ? 768 : 921.6) : (lite ? 921.6 : 1075.2);
+        const cpuInRange = input.cpuSpeedo >= 1300 && input.cpuSpeedo < 1850;
+        const cpuPoints = cpuInRange ? CPU.filter(point => point[0] >= baseline.cpu && point[0] <= cpuCap
+            && estimateCpuMv(point, input.cpuSpeedo) <= cpuBudget) : [];
         const gpuInRange = input.gpuSpeedo >= 1300 && input.gpuSpeedo < 1850;
-        const gpuPoints = gpuInRange ? GPU.filter(point => point[0] <= gpuCap
+        const gpuPoints = gpuInRange ? GPU.filter(point => point[0] >= baseline.gpu && point[0] <= gpuCap
             && estimateGpuMv(point, input.gpuSpeedo) <= gpuBudget) : [];
-        const cpuPoint = cpuPoints[cpuPoints.length - 1] || CPU[0];
+        const cpuPoint = cpuPoints[cpuPoints.length - 1] || CPU.find(point => point[0] === baseline.cpu);
         const gpuPoint = gpuPoints[gpuPoints.length - 1] || GPU.find(point => point[0] === baseline.gpu);
+        const bracket = !gpuInRange ? null : input.gpuSpeedo <= 1624 ? 0 : input.gpuSpeedo <= 1689 ? 1 : input.gpuSpeedo <= 1753 ? 2 : 3;
+        let ramTarget = ram && gpuInRange ? ram.advancedClock : 1866;
+        // 对应 HOC board_volt.cpp 在 GPU 最低电压 610mV 时的内存频率边界。
+        const ramAt610 = [2266, 2433, 2533, 2600];
+        while (bracket !== null && ramTarget > ramAt610[bracket]) {
+            ramTarget = ramTarget > 2133 ? 2133 : 1866;
+        }
         const advanced = {
-            cpu: cpuPoint[0], gpu: gpuPoint[0], ramStart: 1600,
-            ramTarget: ram && ram.ratedClock ? ram.ratedClock : 1600
+            cpu: cpuPoint[0], gpu: gpuPoint[0], ramStart: 1866, ramTarget
         };
         const clocks = input.goal === "performance" ? advanced : baseline;
         return {
             clocks,
             cpu: {
                 estimatedMv: estimateCpuMv(CPU.find(point => point[0] === clocks.cpu), input.cpuSpeedo),
-                budgetMv: cpuBudget,
-                route: CPU.filter(point => point[0] <= clocks.cpu).map(point => point[0])
+                budgetMv: cpuBudget, inRange: cpuInRange, matchedBudget: cpuPoints.length > 0,
+                highUv: clocks.cpu > 1963.5 ? 1 : 0,
+                maxClock: Math.max(1963.5, clocks.cpu),
+                route: CPU.filter(point => point[0] >= baseline.cpu && point[0] <= clocks.cpu).map(point => point[0])
             },
             gpu: {
                 estimatedMv: gpuInRange ? estimateGpuMv(GPU.find(point => point[0] === clocks.gpu), input.gpuSpeedo) : null,
-                budgetMv: gpuBudget, capMHz: gpuCap, inRange: gpuInRange,
+                budgetMv: gpuBudget, capMHz: gpuCap, inRange: gpuInRange, bracket, matchedBudget: gpuPoints.length > 0,
                 route: GPU.filter(point => point[0] >= baseline.gpu && point[0] <= clocks.gpu).map(point => point[0])
             },
             ram: {
-                route: [1600, 1866, 2133].filter(freq => freq <= clocks.ramTarget),
-                ratingMbps: ram ? ram.ratingMbps : null
+                route: [1866, 2133, 2400].filter(freq => freq <= clocks.ramTarget),
+                ratingMbps: ram ? ram.ratingMbps : null,
+                vddq: input.goal === "performance" && ram && gpuInRange ? ram.vddq : 600,
+                requestedClock: ram ? ram.advancedClock : 1866,
+                // 本版只选1866/2133/2400；2400在bracket1的表要求为610，其余所选档<=610。
+                requiredGpuMv: clocks.ramTarget <= 1866 ? 610 : clocks.ramTarget === 2400 && bracket === 1 ? 610 : 590
             }
         };
     }

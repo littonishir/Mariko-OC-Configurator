@@ -20,7 +20,7 @@ function controller({ clipboardFails = false, fallbackCopies = true } = {}) {
     const result = node();
     const error = node();
     const fields = Object.fromEntries([
-        ".profile-meta", ".preset-comparison", ".diagnosis", ".clock-strip", ".baseline-note",
+        ".profile-meta", ".diagnosis", ".clock-strip",
         ".config-sections", ".warning-box", ".copy-button", ".save-image-button"
     ].map(key => [key, node()]));
     const root = node();
@@ -29,7 +29,7 @@ function controller({ clipboardFails = false, fallbackCopies = true } = {}) {
     const nodes = {
         "#config-form": form, "#result": result, "#form-error": error,
         "#result-template": { content: { cloneNode: () => root } },
-        "#update-notice p": node(), "#fill-example": node()
+        "#fill-example": node()
     };
     const copied = [];
     const body = node();

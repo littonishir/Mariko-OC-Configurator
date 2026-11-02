@@ -1,139 +1,122 @@
 # 星野無上 HOC 配置助手
 
-面向 Mariko 设备的 Horizon-OC 配置助手，提供 **保守配置 / 进阶配置**，当前参数依据 **HOC 2.6.0-rel**。
-进阶配置结合 Speedo、电压表、机型、供电场景和 RAM 规格选择频率；Speedo 不代表稳定性保证。
+**本分支仅本地调试，未经用户验收不发布。** 线上 `gh-pages` 已回滚到 `8266c10`；不要同时推送 main 与 gh-pages。
+本地分支 `dev/guide-performance-local` 保留旧版布局与“指南安全上限 / 进阶性能”两个名称。
 
-## 2026-11-02 修正说明
+适用 Mariko（续航版、OLED、Lite）及 **HOC 2.6.0-rel**。纯静态网页，不上传硬件信息，不写入主机。
 
-旧版将额外降压、DVB 8、颗粒时序和较高频率同时推荐给不同设备，已有用户反馈无法启动。
-这些因素没有逐项隔离，不能断定某个电压就是唯一原因，也不能用一台 OLED 的成功结果保证其他机器稳定。
-请停用旧导出图与旧推荐，先恢复自己已验证可启动的配置，再逐项排查。
+## 指南安全上限
 
-## 在线使用
+名称沿用原版；以下是本工具与用户共同确定的基础档，不代表上游通用稳定性保证。
 
-访问：[星野無上 HOC 配置助手](https://littonishir.github.io/Mariko-OC-Configurator/)
+| 运行频率 | 掌机 | 插电／底座 |
+| --- | ---: | ---: |
+| RAM | 1866 MHz | 1866 MHz |
+| CPU | 1581 MHz | 1785 MHz |
+| GPU | 614.4 MHz | 768 MHz |
 
-工具为纯静态网页，所有参数均在浏览器本地处理，不会上传硬件信息。
+- 解锁频率：建议打开；解锁不等于立即使用最高档。
+- CPU：低频／高频降压0/0，1683分界，VMIN620/750、VMAX1120 mV；KIP上限和加速1963.5 MHz。
+- GPU：HiOPT、VMIN610、VMAX800 mV、偏移0。
+- RAM：DVB0、HP关闭、JEDEC、默认延迟与时序，VDD2/VDDQ1175/600 mV；KIP内存上限1866 MHz。
+- CPU加速可能暂时高于运行档。运行档、KIP上限与加速设置要分别核对。
 
-## 主要功能
+## 进阶性能
 
-- CPU／GPU Speedo 参与电压表估算选档，SoC Speedo 保留记录，不标注体质等级。
-- RAM 根据可核对的 3733／4266 Mbps 规格，分别建议 1866／2133 MHz；速度等级未核实则保持 1600 MHz。
-- 提供保守配置和进阶配置，页面同时展示两套频率对比；切换方案查看对应详细参数。
-- 两套保留相同的 KIP 电压与默认时序，进阶只改变运行频率。
-- 网页、长图和复制结果按“安全设置 → RAM → CPU → GPU”展示配置。
-- 安全设置保留“解锁频率：建议打开”，说明解锁不等于选用高频，不自动修改主机。
-- 分开显示调频器的初始运行档与 KIP 上限，CPU 加速单独列出。
-- 给出后续逐级验证路线及风险提示。
-- 支持把完整配置页面保存为长图。
+CPU/GPU按 **实际TBREAK1683 / HiOPT表** 与Speedo估算选档；RAM根据指南颗粒经验，再与GPU/RAM电压关系取交集。
+不根据Speedo猜测“最高可稳定降压等级”。低频UV保留0，只有推荐CPU频率超过1963.5时才用高频UV1，不自动使用4/5级降压。
+CPU最低620/750、GPU最低610、CPU最高1120、GPU最高800 mV保持不变；加速仍1963.5 MHz。
 
-## 使用方法
+以下预算是本工具减少候选范围的策略，**不是HOC官方安全线、实测电压、额外电压设置，也不代表电流或功耗已满足限制**。
+CVB计算形式参考NVIDIA实现，GPU扫描0–90°C温度项，估算向上取整到5mV；未模拟供电裕量、调度、老化或降压稳定性。
 
-1. 输入设备的 CPU、GPU、SoC Speedo。
-2. 输入 RAM Module ID，例如 `WT:F`。
-3. 选择设备类型、供电场景（掌机、普通 USB 插电、官方充电器／底座）和配置方案。
-4. 点击“生成配置”。
-5. 先备份当前可启动的 KIP、HOC 配置、SD 卡与 NAND，并确认可以进入 Hekate 恢复。
-6. 区分运行档和 KIP 参数，不要整套覆盖已验证的配置。KIP 修改后保存 KIP 并完全重启。
-7. 检查全局和各游戏的自动超频档，按页面步骤逐项验证冷启动、休眠唤醒和游戏负载。
-8. 需要分享时，复制结果或保存长图；二者均包含版本、参数、验证步骤和回退提示。
-
-页面默认提供一组 OLED 示例参数：
-
-```text
-CPU Speedo: 1662
-GPU Speedo: 1694
-SoC Speedo: 1728
-RAM Module ID: WT:F
-```
-
-## 配置原则
-
-保守配置的运行档是本工具选择的排查条件，不是所有游戏的 HOS 默认值，也不是恒定实际频率；请在监控中核对。
-
-| 项目 | 调频器初始运行档 | KIP 参数（HOC 2.6.0 默认） |
+| 场景 | CPU预算／频率范围 | GPU预算／频率范围 |
 | --- | --- | --- |
-| RAM | 1600 MHz | 上限 2133 MHz；VDD2/VDDQ 1175/600 mV；DVB 0；高性能关闭；JEDEC；延迟覆盖及时序缩减默认 0 |
-| CPU | 1020 MHz | 上限／加速 1963.5 MHz；降压 0/0；分界 1683 MHz；VMIN 620/750 mV；VMAX 1120 mV |
-| GPU | 掌机 384／插电 768 MHz | HiOPT；VMIN 610 mV；VMAX 800 mV；偏移 0 |
+| 续航版／OLED掌机 | 1000 mV／≤1963.5 MHz | 650 mV／≤921.6 MHz |
+| Lite掌机 | 950 mV／≤1785 MHz | 625 mV／≤768 MHz |
+| 续航版／OLED插电 | 1100 mV／≤2397 MHz | 750 mV／≤1075.2 MHz |
+| Lite插电 | 1050 mV／≤2193 MHz | 700 mV／≤921.6 MHz |
 
-HOC 默认不同于 HOS 原厂设置，HiOPT 也不是“无降压”。这些参数只用于重新建立排查条件，不保证稳定。
-KIP 上限不代表应该立即使用该频率；CPU 加速可暂时高于调频器运行档。
+插电方案按官方充电器条件选档，普通USB或供电不明时沿用掌机方案。输入超出本工具Mariko参考范围1300–1849时，
+对应项目不外推；没有符合预算的升频档则保留指南频率。此范围和预算是本工具取舍，不是芯片物理边界。
 
-进阶配置先通过保守配置，再按 RAM → CPU → GPU 一项一项升频。内存路线为 `1600 → 1866 → 2133 MHz`，
-3733 Mbps 颗粒止于 1866；4266 Mbps 颗粒止于 2133。未知颗粒、NEI 和未核实的 MGCR 别名保持 1600。
-不自动添加 Common/ST 时序、DVB 偏移或额外降压。Lite 单独限制掌机功耗倾向与 GPU 频率。
+### RAM规则
 
-## 进阶频率如何选择
+先按下表选择，再检查HOC `board_volt.cpp` 中GPU Speedo分档对应的RAM电压要求：
 
-`frequency-plan.js` 使用 HOC 的 **TBREAK1683** CPU 表和 **HiOPT** GPU 表，按 NVIDIA Tegra CVB 数学形式计算电压参考；
-GPU 包含 0–90°C 每 1°C 的温度项扫描。电压结果按 5 mV 向上取整。它是简化模型，未模拟实际供电、板级裕量、
-调度、RAM 与 GPU 的相互影响或老化，不能当作实测电压或要求用户手动填写的电压。
+| RAM ID | 首版进阶目标 | VDDQ |
+| --- | ---: | ---: |
+| WT:B、WT:E、WT:F | 2400 MHz | 600 mV |
+| NEI／NEE／x267、AA-MGCL／MGCR | 2400 MHz | 640 mV |
+| AM-MGCJ、AB-MGCL、NME | 2133 MHz | 640 mV |
+| 未识别ID | 1866 MHz | 600 mV |
 
-筛选预算是本工具的取舍，不是 HOC 官方推荐安全线，也不是要设置的 VMAX：
+这是对社区经验范围的保守缩小，不是额定规格、HOC内置颗粒保证或已验证结果。VDDQ640来自指南经验，不能理解为厂商额定值。
+Hekate规格表仅用于核对颗粒身份和3733/4266Mbps速度等级，额定速度不是超频极限；NEI/MGCR身份映射仍以完整颗粒信息为准。
 
-| 场景 | CPU 估算预算 | GPU 估算预算 | GPU 频率范围 |
-| --- | --- | --- | --- |
-| 掌机 OLED／续航版 | 950 mV | 610 mV | ≤768 MHz |
-| 掌机 Lite | 900 mV | 610 mV | ≤614.4 MHz |
-| 普通 USB 插电 | 1000 mV | 700 mV | ≤998.4 MHz |
-| 官方充电器／底座 | 1000 mV | 750 mV | ≤1075.2 MHz |
+GPU分档采用 **2.6.0代码**：1300–1624、1625–1689、1690–1753、1754–1849。第一档在RAM2400时电压表要求640mV，
+不符合保持GPU最低610mV的策略，因此降到2133；其余分档的2400目标在本版表中要求不高于610。
+这只排除一个已知电压冲突，不证明内存稳定，也不能替代GPU与RAM的组合测试。
 
-在范围内选取估算电压不超过预算的最高档；CPU 保持 UV0/0，始终不超过当前表支持的 1963.5 MHz。
-GPU Speedo 超出 HOC Mariko 分档参考范围（1300–1849）时不推导进阶频率。
-两台设备即使 Speedo 相同，实际稳定性、温度和功耗仍可能不同。
+全部保持VDD2 1175mV、DVB0、HP关闭、默认时序和延迟，不套Common/ST，不自动推荐2666MHz以上的极限档。
+先单独验证颗粒电压，再按1866→2133→2400逐级提高。CPU高频750mV固定的前提下，不照抄指南高RAM频率可能需要850–870mV的配置。
 
-## 风险提示
+### 示例
 
-生成结果不能代替实机逐级测试；自动化测试只验证输出规则，不验证主机稳定性。
-超频和降压可能引发死机、花屏、数据损坏、异常发热或无法启动。请确认自己了解恢复方法，
-遇到异常立即停止测试，通过 Hekate／读卡器恢复之前可启动的 KIP 与 HOC 配置，然后完全重启。
-若初始配置仍异常，先排查 HOC、Atmosphère 版本与现有环境，不继续盲目加压或升频。
+CPU1651 / GPU1677 / SoC1688 / WT:F，续航版或OLED：
 
-## 本地运行
+| 方案／场景 | RAM | CPU | GPU | CPU降压 |
+| --- | ---: | ---: | ---: | --- |
+| 指南安全上限／掌机 | 1866 | 1581 | 614.4 | 0/0 |
+| 指南安全上限／插电 | 1866 | 1785 | 768 | 0/0 |
+| 进阶性能／掌机 | 2400 | 1963.5 | 921.6 | 0/0 |
+| 进阶性能／插电 | 2400 | 2193 | 1075.2 | 0/1 |
 
-项目不依赖构建工具，可以直接打开 `index.html`，也可以启动本地静态服务器：
+频率单位MHz。示例是规则计算结果，没有替用户的主机完成这些组合的实机验证。
+
+## 使用与回退
+
+先备份NAND、SD卡、可启动KIP及HOC配置，确认可以进入Hekate恢复。先通过指南配置，再一次只改一项颗粒电压、CPU降压或频率。
+KIP参数更改后保存KIP并完全重启；检查旧的全局／各游戏自动档是否覆盖推荐运行值。
+逐项观察冷启动、休眠唤醒、实际时钟和常玩的游戏；跑分提升、一次进桌面或单项测试通过都不代表组合长期稳定。
+高频UV1不稳定时，恢复UV0/0及指南档，必要时RAM1600排查，不继续增加降压等级。异常立即恢复此前可启动KIP与配置。
+超频或内存不稳定可能导致卡死、无法启动、数据损坏。保留温度及功耗保护的默认设置，不照搬指南中关闭保护的建议。
+
+页面、复制文本和PNG共同使用 `configSections`、`selectionNotes` 与验证步骤，输出顺序为安全设置→RAM→CPU→GPU。
+未增加对比表或表单；旧版正常布局保留，仅修复长内存ID在手机上的自动折行。
+
+## 资料来源与版本冲突
+
+- [HOC 2.6.0-rel](https://github.com/Horizon-OC/Horizon-OC/releases/tag/2.6.0-rel)：本整合包实际使用版本。
+- [customize.cpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/Atmosphere/stratosphere/loader/source/oc/customize.cpp)：默认值、CPU/GPU电压表。
+- [pcv.hpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/Atmosphere/stratosphere/loader/source/oc/pcv/pcv.hpp)、[pcv_mariko.cpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/Atmosphere/stratosphere/loader/source/oc/pcv/pcv_mariko.cpp)：实际选表、UV门槛、频率范围。
+- [board_fuse.cpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/hoc-clk/sysmodule/src/board/board_fuse.cpp)、[board_volt.cpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/hoc-clk/sysmodule/src/board/board_volt.cpp)：GPU Speedo分档及RAM/GPU电压关系。
+- [HOC官网Mariko指南](https://github.com/Horizon-OC/horizon-oc.github.io/blob/21c574a07d953c3341e573624c26fb3e9bf1a9a8/docs/mariko.md)、[另一版指南](https://github.com/Horizon-OC/horizon-oc.github.io/blob/21c574a07d953c3341e573624c26fb3e9bf1a9a8/docs/mariko2.md)：2026-06-07的经验资料，用于参考颗粒、供电、调整顺序，不直接套用整套高频/低压/紧时序。
+- [Hekate v6.5.4颗粒规格](https://github.com/CTCaer/hekate/blob/v6.5.4/nyx/nyx_gui/frontend/gui_info.c)：颗粒名称及3733/4266Mbps规格。
+- [NVIDIA Tegra CVB公式](https://github.com/OE4T/linux-tegra-4.9/blob/oe4t-patches-l4t-r32.7.4/drivers/soc/tegra/cvb.c)、[缩放参数](https://github.com/OE4T/linux-tegra-4.9/blob/oe4t-patches-l4t-r32.7.4/drivers/soc/tegra/tegra210-dvfs.c)。
+- [HOC Web-vMin-Calculator](https://github.com/Horizon-OC/Web-vMin-Calculator)：交叉参考；分档边界有三个值与2.6.0不同，实际使用代码边界。
+- [Dominatorul测试指南备份](https://github.com/dominatorul/Guides/blob/main/stability.md)：明确标记可能过时，测试思路仅作补充；基准测试不能当作稳定证明。
+
+例如官网指南仍提DVB10，但2.6.0界面最高8；不同指南颗粒等级与频率也有差异。发生冲突以目标版本源码和用户确认的设置为准。
+HOC代码支持的最大频率或校验上限不表示该频率适合日常使用。上游代码与文档按各自许可证提供，数据和公式在此注明出处。
+
+## 本地预览与验证
 
 ```bash
-python3 -m http.server 8080
+cd /Users/velvet/Geek.localized/Mariko-OC-Configurator
+python3 -m http.server 18765 --bind 127.0.0.1
 ```
 
-然后访问 `http://127.0.0.1:8080`。
-
-## 开发与测试
-
-项目使用原生 HTML、CSS 和 JavaScript，配置生成逻辑位于 `configurator.js`。
-
-运行测试：
+访问 `http://127.0.0.1:18765`。测试：
 
 ```bash
 node --test
-```
-
-运行 JavaScript 语法检查：
-
-```bash
 node --check app.js
 node --check configurator.js
+node --check frequency-plan.js
+git diff --check
 ```
 
-## 交流社群
+后续发布须单独得到用户验收；改JS/CSS时同步更新HTML资源版本号，防止混用旧脚本缓存。
 
-- 阿抖群：`912250885031`
-- 阿Q群：`281559687`
-
-## 资料说明
-
-参数与数值表以 [HOC 2.6.0-rel 的 customize.cpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/Atmosphere/stratosphere/loader/source/oc/customize.cpp)
-为依据；[pcv.hpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/Atmosphere/stratosphere/loader/source/oc/pcv/pcv.hpp) 明确了 CPU 表选择。
-GPU 场景范围参考 [clock_manager.cpp](https://github.com/Horizon-OC/Horizon-OC/blob/2.6.0-rel/Source/hoc-clk/sysmodule/src/mgr/clock_manager.cpp)；即使开启解锁，本工具也保留自己的筛选范围。
-RAM 规格依据 [Hekate v6.5.4 的 gui_info.c](https://github.com/CTCaer/hekate/blob/v6.5.4/nyx/nyx_gui/frontend/gui_info.c)，型号的额定速度不作为主机稳定性保证。
-CVB 计算形式参考 [NVIDIA Tegra cvb.c](https://github.com/OE4T/linux-tegra-4.9/blob/oe4t-patches-l4t-r32.7.4/drivers/soc/tegra/cvb.c)，
-缩放参数参照[对应驱动](https://github.com/OE4T/linux-tegra-4.9/blob/oe4t-patches-l4t-r32.7.4/drivers/soc/tegra/tegra210-dvfs.c)。
-上述 HOC、Hekate 与 NVIDIA/Linux 来源按各自 GPL-2.0 许可提供；本项目对数据与公式注明出处，不把模型输出称为上游官方配置。
-其他版本应重新核对参数，不能直接沿用本版结论。
-
-## 发布
-
-修改 JS／CSS 后，同时更新 `index.html` 中四处资源版本参数（`?v=...`），避免旧浏览器缓存混用新页面与旧推荐逻辑。
-推送后既要核对 Pages 部署提交，也要打开线上页面生成一次配置，确认实际运行的是新规则。
+交流社群：阿抖群912250885031，阿Q群281559687。
