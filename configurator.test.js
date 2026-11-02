@@ -1,134 +1,151 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { findRamProfile, recommend, toText } = require("./configurator.js");
+const { findRamProfile, recommend, configSections, toText } = require("./configurator.js");
 
 const base = {
-    cpuSpeedo: 1650,
-    gpuSpeedo: 1680,
-    socSpeedo: 1700,
-    ramId: "WT:B",
-    model: "regular",
-    mode: "handheld",
-    goal: "balanced"
+    cpuSpeedo: 1651, gpuSpeedo: 1677, socSpeedo: 1688,
+    ramId: "WT:F", model: "regular", mode: "handheld", goal: "balanced"
 };
 
-test("识别 RAM ID 时忽略大小写和空格", () => {
-    assert.equal(findRamProfile(" wt:b ").tier, "GOD");
-    assert.equal(findRamProfile("aa-mgcr").tier, "S");
+test("识别内存别名而不把识别结果作为稳定频率保证", () => {
+    assert.equal(findRamProfile(" wt:f ").id, "WT:F");
+    assert.equal(findRamProfile("aa-mgcr").id, "AA-MGCR / MGCR");
+    assert.equal(findRamProfile("unknown"), null);
 });
 
-test("续航版掌机配置采用指南安全上限", () => {
+test("首次配置从1600内存和非超频运行值排查而非直接2400", () => {
     const result = recommend(base);
     assert.equal(result.ok, true);
-    assert.deepEqual(result.clocks, {
-        cpu: 1963,
-        gpu: 998,
-        ramStart: 2133,
-        ramTarget: 2400,
-        ramTuningTarget: 2400,
-        powerLimit: 8.6
+    assert.equal(result.clocks.cpu, 1020);
+    assert.equal(result.clocks.gpu, 384);
+    assert.equal(result.clocks.ramStart, 1600);
+    assert.equal(result.clocks.ramTarget, 1600);
+    assert.equal(result.ram.maxClock, "2133 MHz");
+    assert.equal(result.risk, "保守配置");
+});
+
+test("CPU和GPU保持HOC2.6.0默认而非套用额外降压和2601加速", () => {
+    const result = recommend(base);
+    assert.deepEqual(result.cpu, {
+        boostClock: 1963.5, maxClock: 1963.5, uvTable: 1683,
+        lowUvStart: 0, highUvStart: 0, lowVmin: "620 mV",
+        highVmin: "750 mV", voltageLimit: "1120 mV"
     });
-    assert.equal(result.cpu.voltageLimit, "1120 mV");
-    assert.equal(result.gpu.voltageOffset, "0");
+    assert.deepEqual(result.gpu, {table: "HiOPT（HOC 默认）", vmin: "610 mV", vmax: "800 mV", voltageOffset: "0"});
+});
+
+test("默认内存不套用Common或ST且DVB和时序恢复原始默认", () => {
+    const result = recommend(base);
+    assert.equal(result.ram.dvbShift, 0);
     assert.equal(result.ram.hpMode, "关闭");
-    assert.equal(result.ram.dvbShift, 8);
-    assert.equal(result.ram.latencyEditor, "2133 Latency Max");
-    assert.equal(result.ram.timingReductions, "Common: (4-4-5) 4-2-6-5-6");
-    assert.match(toText(result), /DVB偏移 8/);
-    assert.doesNotMatch(toText(result), /DVB偏移 10/);
+    assert.equal(result.ram.stepMode, "JEDEC");
+    assert.equal(result.ram.vdd2, "1175 mV");
+    assert.equal(result.ram.vddq, "600 mV");
+    assert.match(result.ram.timingReductions, /t1.*t8.*0/);
+    assert.match(result.ram.latencyEditor, /默认/);
+    assert.doesNotMatch(result.ram.timingReductions, /Common:|ST:/);
 });
 
-test("Lite 掌机使用更低 CPU GPU 和功耗上限", () => {
-    const result = recommend({ ...base, model: "lite" });
-    assert.equal(result.clocks.cpu, 1785);
-    assert.equal(result.clocks.gpu, 921);
-    assert.equal(result.clocks.powerLimit, 6.5);
+test("两套配置只改变运行频率而不自动增加降压或修改时序", () => {
+    const normal = recommend(base);
+    const advanced = recommend({...base, goal: "performance"});
+    assert.deepEqual(advanced.cpu, normal.cpu);
+    assert.deepEqual(advanced.gpu, normal.gpu);
+    assert.deepEqual(advanced.ram, normal.ram);
+    assert.ok(advanced.clocks.cpu > normal.clocks.cpu);
+    assert.ok(advanced.clocks.gpu > normal.clocks.gpu);
+    assert.equal(advanced.clocks.ramStart, 1600);
+    const notes = Object.values(advanced.tuningNotes).flat().join("\n");
+    assert.match(notes, /1866/);
+    assert.match(notes, /一项|一个变量/);
+    assert.equal(advanced.risk, "进阶配置");
 });
 
-test("未知 RAM 使用保守参数并给出警告", () => {
-    const result = recommend({ ...base, ramId: "UNKNOWN" });
-    assert.equal(result.ram.recognized, false);
-    assert.equal(result.clocks.ramTarget, 2400);
-    assert.equal(result.ram.dvbShift, 5);
-    assert.equal(result.ram.timingReductions, "默认");
-    assert.match(result.warnings.join("\n"), /未识别 RAM ID/);
+test("未知内存不输出颗粒时序或高频目标", () => {
+    for (const goal of ["balanced", "performance"]) {
+        const result = recommend({...base, ramId: "UNKNOWN", goal});
+        assert.equal(result.ram.recognized, false);
+        assert.equal(result.clocks.ramTarget, 1600);
+        assert.equal(result.ram.dvbShift, 0);
+        assert.match(result.warnings.join("\n"), /未识别 RAM ID/);
+        assert.doesNotMatch(Object.values(result.tuningNotes).flat().join("\n"), /2400|ST:|Common:/);
+    }
 });
 
-test("NME 进阶目标不会降低 2400 MHz 安全基线", () => {
-    const result = recommend({
-        ...base,
-        ramId: "NME",
-        mode: "plugged",
-        goal: "performance"
-    });
-    assert.equal(result.clocks.ramTarget, 2400);
-    assert.equal(result.clocks.ramTuningTarget, 2400);
+test("Speedo只作记录不能被标为良好或用来推导降压值", () => {
+    const low = recommend({...base, cpuSpeedo: 1400, gpuSpeedo: 1400, socSpeedo: 1400});
+    const high = recommend({...base, cpuSpeedo: 1800, gpuSpeedo: 1800, socSpeedo: 1800});
+    assert.deepEqual(low.cpu, high.cpu);
+    assert.deepEqual(low.gpu, high.gpu);
+    for (const part of ["cpu", "gpu", "soc"]) {
+        assert.match(high.diagnosis[part].label, /参考|记录/);
+        assert.doesNotMatch(high.diagnosis[part].label, /良好|体质好/);
+    }
+    assert.match(high.warnings.join("\n"), /Speedo.*不能/);
 });
 
-test("Speedo 不会直接改写没有文档分档依据的 CPU 起步值", () => {
-    const lowSpeedo = recommend({ ...base, cpuSpeedo: 1400, socSpeedo: 1400 });
-    const highSpeedo = recommend({ ...base, cpuSpeedo: 1800, socSpeedo: 1800 });
-    assert.deepEqual(lowSpeedo.cpu, highSpeedo.cpu);
-    assert.equal(lowSpeedo.cpu.lowUvStart, 4);
-    assert.equal(lowSpeedo.cpu.uvTable, 1683);
-    assert.equal(lowSpeedo.cpu.lowVmin, "590 mV");
+test("各内存机型场景与模式都保持默认电压与时序及频率边界", () => {
+    // 14 个别名及 1 个未知值 × 2 机型 × 3 场景 × 2 配置 = 180 组。
+    for (const ramId of ["WT:B", "NEI", "NEE", "X267", "AA-MGCL", "AA-MGCR", "MGCL", "MGCR", "WT:E", "AM-MGCJ", "MGCJ", "WT:F", "AB-MGCL", "NME", "UNKNOWN"]) {
+        for (const model of ["regular","lite"]) {
+            for (const mode of ["handheld","plugged","docked"]) {
+                for (const goal of ["balanced","performance"]) {
+                    const result = recommend({...base,ramId,model,mode,goal});
+                    assert.equal(result.ok,true);
+                    assert.ok(result.clocks.cpu >= 1020 && result.clocks.cpu <= 1963.5);
+                    assert.ok(result.clocks.gpu >= 384 && result.clocks.gpu <= 1075.2);
+                    assert.ok(result.clocks.ramTarget >= 1600 && result.clocks.ramTarget <= 2133);
+                    if (goal === "balanced") {
+                        assert.equal(result.clocks.cpu,1020);
+                        assert.equal(result.clocks.gpu,mode === "handheld" ? 384 : 768);
+                        assert.equal(result.clocks.ramTarget,1600);
+                    }
+                    assert.equal(result.cpu.boostClock,1963.5);
+                    assert.equal(result.ram.dvbShift,0);
+                    assert.match(result.ram.timingReductions,/t1.*t8.*0/);
+                }
+            }
+        }
+    }
 });
 
-test("性能配置文本包含主要参数与风险", () => {
-    const result = recommend({ ...base, mode: "plugged", goal: "performance" });
+test("复制文本区分运行频率与KIP上限并包含回退与验证顺序", () => {
+    const result = recommend(base);
     const text = toText(result);
-    assert.match(text, /CPU 2397 MHz/);
-    assert.match(text, /GPU 1152 MHz/);
-    assert.equal(result.clocks.ramTarget, 2400);
-    assert.equal(result.clocks.ramTuningTarget, 3066);
-    assert.equal(result.ram.timingReductions, "ST: (6-6-7) 5-2-6-5-6");
-    assert.match(text, /ST 不稳定时/);
-    assert.match(text, /再逐级测试到 3066 MHz/);
-    assert.match(text, /1228 MHz/);
-    assert.match(text, /CPU降压模式/);
-    assert.match(text, /CPU最高电压/);
-    assert.match(text, /CPU最高频率/);
-    assert.match(text, /CPU加速频率/);
-    assert.ok(text.indexOf("CPU低频降压") < text.indexOf("CPU高频降压"));
-    assert.ok(text.indexOf("CPU高频降压") < text.indexOf("CPU降压模式"));
-    assert.ok(text.indexOf("GPU降压模式") < text.indexOf("GPU最低电压"));
-    assert.ok(text.indexOf("GPU最低电压") < text.indexOf("GPU最高电压"));
-    assert.doesNotMatch(text, /GPU Scheduling Override|GPU DVFS Mode|GPU DVFS Offset/);
-    assert.ok(text.indexOf("DVB偏移") < text.indexOf("SoC最高电压"));
-    assert.ok(text.indexOf("SoC最高电压") < text.indexOf("高性能模式"));
-    assert.ok(text.indexOf("内存VDD2电压") < text.indexOf("内存VDDQ电压"));
-    assert.ok(text.indexOf("步进模式") < text.indexOf("内存最高频率"));
-    assert.ok(text.indexOf("内存延迟编辑") < text.indexOf("内存时序优化"));
-    assert.match(text, /数据风险|损坏/);
+    const sections = text.split("\n").filter(line => /^\[(安全设置|RAM|CPU|GPU)\]/.test(line));
+    assert.equal(sections.length,4);
+    assert.match(sections[0], /^\[安全设置\].*解锁频率.*建议打开/);
+    assert.match(sections[0], /解锁.*不.*高频/);
+    assert.match(sections[1], /^\[RAM\].*运行频率.*1600/);
+    assert.match(sections[2], /^\[CPU\].*运行频率.*1020/);
+    assert.match(sections[3], /^\[GPU\].*运行频率.*384/);
+    assert.match(sections[1],/KIP上限.*2133/);
+    assert.match(sections[2],/KIP上限.*1963.5/);
+    assert.match(text,/验证顺序/);
+    assert.match(text,/回退/);
+    assert.match(text,/冷启动/);
+    assert.match(text,/休眠/);
+    assert.doesNotMatch(text,/安全上限|安全起点|直接填写值|2601|590 mV|580 mV/);
+    assert.deepEqual(configSections(result).map(section => section.textLabel), ["安全设置", "RAM", "CPU", "GPU"]);
 });
 
-test("拒绝不合理的 Speedo", () => {
-    const result = recommend({ ...base, cpuSpeedo: 5000 });
-    assert.equal(result.ok, false);
-    assert.match(result.errors[0], /1200 到 2000/);
+test("风险提示承认历史故障和默认值不等于稳定保证", () => {
+    const warnings = recommend(base).warnings.join("\n");
+    assert.match(warnings,/旧版|历史/);
+    assert.match(warnings,/无法启动|进不去系统/);
+    assert.match(warnings,/默认.*不.*稳定/);
+    assert.match(warnings,/备份/);
+    assert.match(warnings,/损坏/);
 });
 
-test("复制结果按安全设置、RAM、CPU、GPU展示并保留原参数", () => {
-    const text = toText(recommend(base));
-    const sections = text.split("\n").filter((line) => /^\[(安全设置|RAM|CPU|GPU)\]/.test(line));
-    assert.equal(sections.length, 4);
-    assert.match(sections[0], /^\[安全设置\] 解锁频率 建议打开$/);
-    assert.match(sections[1], /^\[RAM\] DVB偏移 8/);
-    assert.match(sections[2], /^\[CPU\] CPU低频降压 4/);
-    assert.match(sections[3], /^\[GPU\] GPU降压模式 高降压/);
-    assert.match(sections[1], /内存最高频率 2400 MHz/);
-    assert.match(sections[2], /CPU最高频率 1963 MHz/);
-    assert.match(sections[3], /GPU电压偏移 0/);
-});
-
-test("未知内存与Lite进阶场景仍按相同顺序显示安全建议", () => {
-    const text = toText(recommend({ ...base, ramId: "UNKNOWN", model: "lite", mode: "plugged", goal: "performance" }));
-    const sections = text.match(/^\[(安全设置|RAM|CPU|GPU)\].*$/gm);
-    assert.equal(sections.length, 4);
-    assert.match(sections[0], /^\[安全设置\] 解锁频率 建议打开$/);
-    assert.match(sections[1], /^\[RAM\] DVB偏移 5/);
-    assert.match(sections[2], /^\[CPU\]/);
-    assert.match(sections[3], /^\[GPU\]/);
-    assert.match(text, /未识别 RAM ID/);
-    assert.match(text, /稳定性保证/);
+test("拒绝无效硬件输入和场景", () => {
+    for (const input of [
+        {...base,cpuSpeedo:5000}, {...base,gpuSpeedo:NaN},
+        {...base,socSpeedo:Infinity}, {...base,ramId:" "},
+        {...base,model:"erista"}, {...base,mode:"bad"}, {...base,goal:"bad"},
+        {...base,ramId:"x".repeat(33)}
+    ]) {
+        assert.equal(recommend(input).ok,false);
+    }
+    assert.equal(toText({ok:false}),"无法生成配置");
 });

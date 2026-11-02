@@ -5,6 +5,8 @@
     const resultPanel = document.querySelector("#result");
     const template = document.querySelector("#result-template");
     const errorBox = document.querySelector("#form-error");
+    const { HISTORY_NOTICE, BASELINE_NOTE } = window.MarikoConfigurator;
+    document.querySelector("#update-notice p").textContent = HISTORY_NOTICE;
     let latestResult = null;
 
     function escapeHtml(value) {
@@ -38,8 +40,10 @@
         resultPanel.replaceChildren(template.content.cloneNode(true));
         const root = resultPanel.querySelector(".result-content");
         const model = result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED";
-        const mode = result.input.mode === "handheld" ? "掌机模式" : "插电 / 底座";
+        const mode = window.MarikoConfigurator.MODE_LABELS[result.input.mode];
         root.querySelector(".profile-meta").innerHTML = `<span>${model}</span><span>${mode}</span><span>${result.risk}</span>`;
+        const summaries = window.MarikoConfigurator.presetSummaryRows(result);
+        root.querySelector(".preset-comparison").innerHTML = `<table><caption>两套配置对比（MHz）</caption><thead><tr><th>方案</th><th>RAM</th><th>CPU</th><th>GPU</th></tr></thead><tbody>${summaries.map(([name, ram, cpu, gpu]) => `<tr class="${name === result.risk ? "selected" : ""}"><th>${name}</th><td>${ram}</td><td>${cpu}</td><td>${gpu}</td></tr>`).join("")}</tbody></table><p>下方详细参数对应：${result.risk}</p>`;
 
         root.querySelector(".diagnosis").innerHTML = [
             ["CPU", result.input.cpuSpeedo, result.diagnosis.cpu],
@@ -48,14 +52,15 @@
             ["RAM", result.input.ramId, result.diagnosis.ram]
         ].map(([name, value, grade]) => `
             <div class="diagnosis-item">
-                <span>${name}</span><strong>${value}</strong><em class="${grade.tone}">${grade.label}</em>
+                <span>${name}</span><strong>${escapeHtml(value)}</strong><em class="${grade.tone}">${grade.label}</em>
             </div>`).join("");
 
         root.querySelector(".clock-strip").innerHTML = [
-            metric("CPU", result.clocks.cpu, "MHz"),
-            metric("GPU", result.clocks.gpu, "MHz"),
-            metric("RAM 目标", result.clocks.ramTarget, "MHz")
+            metric("RAM 建议频率", result.clocks.ramTarget, "MHz"),
+            metric("CPU 建议频率", result.clocks.cpu, "MHz"),
+            metric("GPU 建议频率", result.clocks.gpu, "MHz")
         ].join("");
+        root.querySelector(".baseline-note").textContent = BASELINE_NOTE;
 
         root.querySelector(".config-sections").innerHTML = window.MarikoConfigurator.configSections(result)
             .map(({ title, kicker, rows }) => section(title, kicker, rows.map(([label, value]) => row(label, value))))
@@ -66,22 +71,24 @@
         }).join("");
         root.querySelector(".config-sections").insertAdjacentHTML("afterend", `
             <section class="tuning-box">
-                <h3>后续调参说明</h3>
-                <p>上方是当前可直接填写值。以下内容只在基础配置稳定后逐项尝试。</p>
+                <h3>选档依据与调整顺序</h3>
+                <p>运行档在调频器中设置，KIP 参数在对应页面设置。先保留可启动的配置，以下步骤仅在基线验证后逐项尝试。</p>
+                <ul>${window.MarikoConfigurator.selectionNotes(result).map(note => `<li>${escapeHtml(note)}</li>`).join("")}</ul>
                 <ul>${tuningItems}</ul>
             </section>`);
 
         root.querySelector(".warning-box").innerHTML = `
-            <h3>验证顺序</h3>
-            <ol><li>保持 RAM 1600 MHz，先验证 CPU 降压。</li><li>CPU 稳定后验证 GPU，GPU电压偏移保持 0。</li><li>最后验证 RAM 频率、Common 时序和 DVB 8；不稳定时先恢复默认时序。</li><li>保存 KIP、重启，并监控温度、功耗和实际时钟。</li></ol>
+            <h3>验证顺序与回退</h3>
+            <ol>${result.validationSteps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
             <h3>风险提示</h3>
-            <ul>${result.warnings.map((warning) => `<li>${warning}</li>`).join("")}</ul>`;
+            <ul>${result.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>`;
 
         root.querySelector(".copy-button").addEventListener("click", copyResult);
         root.querySelector(".save-image-button").addEventListener("click", saveLongImage);
     }
 
     async function copyResult(event) {
+        if (!latestResult) return;
         const button = event.currentTarget;
         const text = window.MarikoConfigurator.toText(latestResult);
         try {
@@ -91,31 +98,37 @@
             const area = document.createElement("textarea");
             area.value = text;
             document.body.appendChild(area);
-            area.select();
-            document.execCommand("copy");
-            area.remove();
-            button.textContent = "已复制";
+            try {
+                area.select();
+                button.textContent = document.execCommand("copy") ? "已复制" : "复制失败，请重试";
+            } catch (_) {
+                button.textContent = "复制失败，请重试";
+            } finally {
+                area.remove();
+            }
         }
         window.setTimeout(() => { button.textContent = "复制结果"; }, 1600);
     }
 
     async function saveLongImage(event) {
+        if (!latestResult) return;
+        const result = latestResult;
         const button = event.currentTarget;
         const originalText = button.textContent;
         button.disabled = true;
         button.textContent = "正在生成...";
 
         try {
-            const canvas = renderLongImage(latestResult);
+            const canvas = renderLongImage(result);
 
             const png = await new Promise((resolve, reject) => {
                 canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("PNG 生成失败")), "image/png");
             });
             const downloadUrl = URL.createObjectURL(png);
             const link = document.createElement("a");
-            const model = latestResult.input.model === "lite" ? "Lite" : "OLED";
-            const ramId = latestResult.input.ramId.replace(/[^a-z0-9]+/gi, "-");
-            const fileName = `Mariko-OC-${model}-${latestResult.input.cpuSpeedo}-${latestResult.input.gpuSpeedo}-${latestResult.input.socSpeedo}-${ramId}.png`;
+            const model = result.input.model === "lite" ? "Lite" : "OLED";
+            const ramId = result.input.ramId.replace(/[^a-z0-9]+/gi, "-");
+            const fileName = `Mariko-OC-${model}-${result.input.cpuSpeedo}-${result.input.gpuSpeedo}-${result.input.socSpeedo}-${ramId}-${result.risk}-${result.input.mode}.png`;
             link.href = downloadUrl;
             link.download = fileName;
             document.body.appendChild(link);
@@ -193,11 +206,15 @@
         y += 50;
         context.fillStyle = colors.muted;
         context.font = canvasFont(400, 23);
-        context.fillText("基于 Speedo 与 RAM 颗粒生成的安全起点，请逐项验证稳定性。", margin, y);
+        context.fillText("HOC 2.6.0 · 2026-11-02 修正版 · 按 Speedo、机型和内存规格选档", margin, y);
         y += 52;
 
+        y = drawListCard(context, margin, y, contentWidth, colors, "旧版配置提醒", [HISTORY_NOTICE]) + 18;
+        y = drawListCard(context, margin, y, contentWidth, colors, "应用前请确认", [BASELINE_NOTE]) + 18;
+
         const model = result.input.model === "lite" ? "Switch Lite" : "OLED / 续航版";
-        const mode = result.input.mode === "handheld" ? "掌机模式" : "插电 / 底座";
+        const mode = window.MarikoConfigurator.MODE_LABELS[result.input.mode];
+        y = drawConfigCard(context, margin, y, contentWidth, colors, "PLAN", "两套配置对比", window.MarikoConfigurator.presetSummaryRows(result).map(([name, ram, cpu, gpu]) => [name, `RAM ${ram} / CPU ${cpu} / GPU ${gpu} MHz`])) + 18;
         y = drawSummaryCard(context, {
             x: margin,
             y,
@@ -213,9 +230,9 @@
         }) + 24;
 
         y = drawClockCard(context, margin, y, contentWidth, colors, [
-            ["CPU 频率上限", result.clocks.cpu, "MHz"],
-            ["GPU 频率上限", result.clocks.gpu, "MHz"],
-            ["RAM 目标频率", result.clocks.ramTarget, "MHz"]
+            ["RAM 建议频率", result.clocks.ramTarget, "MHz"],
+            ["CPU 建议频率", result.clocks.cpu, "MHz"],
+            ["GPU 建议频率", result.clocks.gpu, "MHz"]
         ]) + 24;
 
         window.MarikoConfigurator.configSections(result).forEach(({ title, kicker, rows }) => {
@@ -226,19 +243,15 @@
         const tuningNotes = Object.entries(result.tuningNotes).flatMap(([scope, notes]) => {
             return notes.map((note) => `[${scope.toUpperCase()}] ${note}`);
         });
-        y = drawListCard(context, margin, y, contentWidth, colors, "后续调参说明", tuningNotes) + 18;
+        y = drawListCard(context, margin, y, contentWidth, colors, "选档依据", window.MarikoConfigurator.selectionNotes(result)) + 18;
+        y = drawListCard(context, margin, y, contentWidth, colors, "调整顺序", tuningNotes) + 18;
 
-        y = drawListCard(context, margin, y, contentWidth, colors, "验证顺序", [
-            "保持 RAM 1600 MHz，先验证 CPU 降压设置。",
-            "CPU 稳定后验证 GPU，GPU Voltage Offset 保持 0。",
-            "最后验证 RAM 频率、Common 时序和 DVB 8；不稳定时先恢复默认时序。",
-            "保存 KIP、重启，并监控温度、功耗和实际时钟。"
-        ]) + 18;
+        y = drawListCard(context, margin, y, contentWidth, colors, "验证顺序与回退", result.validationSteps) + 18;
         y = drawListCard(context, margin, y, contentWidth, colors, "风险提示", result.warnings) + 42;
 
         context.fillStyle = colors.muted;
         context.font = canvasFont(400, 18);
-        context.fillText("Mariko OC Guide 数据整理 · 配置仅用于辅助判断，不构成稳定性保证", margin, y);
+        context.fillText("HOC 2.6.0 默认参数与排查步骤 · 默认不等于稳定 · 不自动修改主机", margin, y);
         y += 36;
         context.fillStyle = colors.acid;
         context.font = canvasFont(750, 18);
@@ -270,7 +283,7 @@
             context.fillText(label, itemX, y + 92);
             context.fillStyle = colors.text;
             context.font = canvasFont(800, 34);
-            context.fillText(String(value), itemX, y + 140);
+            context.fillText(String(value), itemX, y + 140, itemWidth - 18);
             context.fillStyle = colors.acid;
             context.font = canvasFont(750, 16);
             context.fillText(grade, itemX, y + 178);
@@ -418,6 +431,9 @@
     function generateResult(scrollToResult) {
         const result = window.MarikoConfigurator.recommend(readForm());
         if (!result.ok) {
+            latestResult = null;
+            resultPanel.replaceChildren();
+            resultPanel.textContent = "输入无效，请修正后重新生成配置。";
             errorBox.textContent = result.errors.join("；");
             errorBox.hidden = false;
             return false;
@@ -437,7 +453,7 @@
     });
 
     form.addEventListener("change", () => {
-        if (latestResult) generateResult(false);
+        if (latestResult || !errorBox.hidden) generateResult(false);
     });
 
     document.querySelector("#fill-example").addEventListener("click", () => {
@@ -446,5 +462,6 @@
         form.elements.socSpeedo.value = "1728";
         form.elements.ramId.value = "WT:F";
         form.elements.model.value = "regular";
+        if (latestResult || !errorBox.hidden) generateResult(false);
     });
 }());
