@@ -235,7 +235,15 @@
         const tuningNotes = Object.entries(result.tuningNotes).flatMap(([scope, notes]) => {
             return notes.map((note) => `[${scope.toUpperCase()}] ${note}`);
         });
-        y = drawListCard(context, margin, y, contentWidth, colors, "后续调参说明", [BASELINE_NOTE, ...window.MarikoConfigurator.selectionNotes(result), ...tuningNotes]) + 18;
+        const tuningBox = resultPanel.querySelector(".tuning-box");
+        const tuningStyle = window.getComputedStyle(tuningBox);
+        const tuningTheme = {
+            accent: window.getComputedStyle(tuningBox.querySelector("h3")).color,
+            background: tuningStyle.backgroundColor,
+            border: tuningStyle.borderTopColor,
+            text: window.getComputedStyle(tuningBox.querySelector("ul")).color
+        };
+        y = drawListCard(context, margin, y, contentWidth, colors, "后续调参说明", [BASELINE_NOTE, ...window.MarikoConfigurator.selectionNotes(result), ...tuningNotes], tuningTheme) + 18;
 
         y = drawListCard(context, margin, y, contentWidth, colors, "验证顺序与回退", result.validationSteps) + 18;
         y = drawListCard(context, margin, y, contentWidth, colors, "风险提示", result.warnings) + 42;
@@ -353,20 +361,21 @@
         return y + height;
     }
 
-    function drawListCard(context, x, y, width, colors, title, items) {
+    function drawListCard(context, x, y, width, colors, title, items, theme = {}) {
         context.font = canvasFont(500, 20);
         const lines = items.map((item) => wrapCanvasText(context, item, width - 110));
         const height = 78 + lines.reduce((sum, itemLines) => sum + itemLines.length * 31 + 16, 0) + 18;
-        drawRoundedRect(context, x, y, width, height, 22, "#161411", "#4e3929");
-        context.fillStyle = colors.orange;
+        const accent = theme.accent || colors.orange;
+        drawRoundedRect(context, x, y, width, height, 22, theme.background || "#161411", theme.border || "#4e3929");
+        context.fillStyle = accent;
         context.font = canvasFont(800, 23);
         context.fillText(title, x + 28, y + 46);
         let itemY = y + 88;
         lines.forEach((itemLines, index) => {
-            context.fillStyle = colors.orange;
+            context.fillStyle = accent;
             context.font = canvasFont(800, 18);
             context.fillText(String(index + 1).padStart(2, "0"), x + 30, itemY);
-            context.fillStyle = "#c3c8c6";
+            context.fillStyle = theme.text || "#c3c8c6";
             context.font = canvasFont(500, 20);
             drawCanvasLines(context, itemLines, x + 82, itemY, 31);
             itemY += itemLines.length * 31 + 16;

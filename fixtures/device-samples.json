@@ -1,0 +1,6 @@
+[
+  {"id":"IMG_4768","cpuSpeedo":1597,"gpuSpeedo":1621,"socSpeedo":1647,"ramId":"AA-MGCL","model":"regular","mode":"plugged","goal":"performance"},
+  {"id":"IMG_4767","cpuSpeedo":1705,"gpuSpeedo":1704,"socSpeedo":1715,"ramId":"NEE","model":"regular","mode":"plugged","goal":"performance"},
+  {"id":"IMG_4765","cpuSpeedo":1705,"gpuSpeedo":1718,"socSpeedo":1735,"ramId":"WT:F","model":"regular","mode":"plugged","goal":"performance"},
+  {"id":"IMG_4764","cpuSpeedo":1574,"gpuSpeedo":1614,"socSpeedo":1649,"ramId":"AB-MGCL","model":"regular","mode":"plugged","goal":"performance"}
+]

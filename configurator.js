@@ -12,15 +12,15 @@
     const DVB_SHIFT_MAX = 8;
     // 只识别颗粒名称；别名不能确定这台机器的稳定频率、电压或时序。
     const RAM_PROFILES = [
-        { id: "WT:B", aliases: ["WT:B"], ratingMbps: 4266, advancedClock: 2400, vddq: 600 },
-        { id: "NEE / x267", aliases: ["NEE", "X267"], ratingMbps: 4266, advancedClock: 2400, vddq: 640 },
-        { id: "NEI", aliases: ["NEI"], ratingMbps: null, advancedClock: 2400, vddq: 640 },
-        { id: "AA-MGCL / MGCL", aliases: ["AA-MGCL", "MGCL"], ratingMbps: 4266, advancedClock: 2400, vddq: 640 },
-        { id: "AA-MGCR / MGCR", aliases: ["AA-MGCR", "MGCR"], ratingMbps: null, advancedClock: 2400, vddq: 640 },
+        { id: "WT:B", aliases: ["WT:B"], ratingMbps: 4266, advancedClock: 2666, vddq: 600 },
+        { id: "NEE / x267", aliases: ["NEE", "X267"], ratingMbps: 4266, advancedClock: 2666, vddq: 640 },
+        { id: "NEI", aliases: ["NEI"], ratingMbps: null, advancedClock: 2666, vddq: 640 },
+        { id: "AA-MGCL / MGCL", aliases: ["AA-MGCL", "MGCL"], ratingMbps: 4266, advancedClock: 2666, vddq: 640 },
+        { id: "AA-MGCR / MGCR", aliases: ["AA-MGCR", "MGCR"], ratingMbps: null, advancedClock: 2666, vddq: 640 },
         { id: "WT:E", aliases: ["WT:E"], ratingMbps: 4266, advancedClock: 2400, vddq: 600 },
-        { id: "AM-MGCJ", aliases: ["AM-MGCJ", "MGCJ"], ratingMbps: 3733, advancedClock: 2133, vddq: 640 },
+        { id: "AM-MGCJ", aliases: ["AM-MGCJ", "MGCJ"], ratingMbps: 3733, advancedClock: 2400, vddq: 640 },
         { id: "WT:F", aliases: ["WT:F"], ratingMbps: 4266, advancedClock: 2400, vddq: 600 },
-        { id: "AB-MGCL", aliases: ["AB-MGCL"], ratingMbps: 4266, advancedClock: 2133, vddq: 640 },
+        { id: "AB-MGCL", aliases: ["AB-MGCL"], ratingMbps: 4266, advancedClock: 2400, vddq: 640 },
         { id: "NME", aliases: ["NME"], ratingMbps: 3733, advancedClock: 2133, vddq: 640 }
     ];
 
@@ -133,7 +133,7 @@
                 recognized: Boolean(ram), id: ram ? ram.id : input.ramId,
                 vdd2: "1175 mV", vddq: `${frequencies.ram.vddq} mV`, dvbShift: 0, socVmax: "默认（0）",
                 hpMode: "关闭", stepMode: "JEDEC", maxClock: `${frequencies.clocks.ramTarget} MHz`,
-                latencyEditor: "默认／自动（覆盖项全部 0）",
+                latencyEditor: "默认",
                 timingReductions: "默认（t1–t8 全部 0；其他时序微调也保持默认）"
             },
             risk: isPerformance ? "进阶性能" : "指南安全上限",
@@ -153,12 +153,11 @@
         return [
             {
                 title: "安全设置", kicker: "SAFE", textLabel: "安全设置",
-                rows: [["解锁频率", "建议打开"], ["解锁说明", "解锁不等于使用高频；先验证下列运行档"]]
+                rows: [["解锁频率", "建议打开"]]
             },
             {
                 title: "内存", kicker: "RAM", textLabel: "RAM",
                 rows: [
-                    ["RAM运行频率（调频器）", `${result.clocks.ramTarget} MHz`],
                     ["DVB偏移", result.ram.dvbShift],
                     ["SoC最高电压", result.ram.socVmax],
                     ["高性能模式", result.ram.hpMode],
@@ -173,7 +172,6 @@
             {
                 title: "处理器", kicker: "CPU", textLabel: "CPU",
                 rows: [
-                    ["CPU运行频率（调频器）", `${result.clocks.cpu} MHz`],
                     ["CPU低频降压", result.cpu.lowUvStart],
                     ["CPU高频降压", result.cpu.highUvStart],
                     ["CPU降压模式", `${result.cpu.uvTable} MHz 分界频率`],
@@ -187,7 +185,6 @@
             {
                 title: "图形处理器", kicker: "GPU", textLabel: "GPU",
                 rows: [
-                    ["GPU运行频率（调频器）", `${result.clocks.gpu} MHz`],
                     ["GPU降压模式", result.gpu.table],
                     ["GPU最低电压", result.gpu.vmin],
                     ["GPU最高电压", result.gpu.vmax],
@@ -208,7 +205,13 @@
                 : plan.gpu.matchedBudget ? `GPU：Speedo ${result.input.gpuSpeedo}，HiOPT 表在 0–90°C 范围估算约 ${plan.gpu.estimatedMv} mV；以 ${plan.gpu.budgetMv} mV 预算及场景范围筛选到 ${result.clocks.gpu} MHz。`
                     : "GPU：未找到符合筛选预算的升频档，沿用指南频率。",
             `RAM：按颗粒指南经验及 HOC GPU 分档 ${plan.gpu.bracket === null ? "未识别" : plan.gpu.bracket}，建议 ${result.clocks.ramTarget} MHz，VDDQ ${plan.ram.vddq} mV；保留 GPU 最低610 mV，SoC Speedo 不用于推算颗粒极限。`,
-            "电压估算只是选档参考，不是应填写的电压，也不是实测结果；预算是本工具的筛选策略，不是上游安全线。实际电压、温度和功耗以监控为准。"
+            "电压估算只是选档参考，不是应填写的电压，也不是实测结果；预算是本工具的筛选策略，不是上游安全线。实际电压、温度和功耗以监控为准。",
+            ...(result.clocks.ramTarget % 1 === 0 && ![1866,1996,2133,2400,2666,2933,3200].includes(result.clocks.ramTarget)
+                ? [`${result.clocks.ramTarget} MHz 是自定义内存最大档，HOC 会将它附加到 JEDEC 频率列表，步进模式仍使用 JEDEC。`]
+                : []),
+            ...(result.clocks.ramTarget >= 2533
+                ? ["该内存频率跨过 2533 MHz 时序阈值；保持默认时序不代表绕过该变化，需单独验证，异常退到 2400 MHz。"]
+                : [])
         ];
     }
 
@@ -219,6 +222,7 @@
             `场景: ${result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED"} · ${MODE_LABELS[result.input.mode]} · ${result.risk}`,
             `硬件记录: CPU Speedo ${result.input.cpuSpeedo} / GPU Speedo ${result.input.gpuSpeedo} / SoC Speedo ${result.input.socSpeedo} / RAM ${result.input.ramId}`,
             "", HISTORY_NOTICE, BASELINE_NOTE, "",
+            `[建议频率] CPU ${result.clocks.cpu} MHz / GPU ${result.clocks.gpu} MHz / RAM ${result.clocks.ramTarget} MHz`,
             ...configSections(result).map(({ textLabel, rows }) =>
                 `[${textLabel}] ${rows.map(([label, value]) => `${label} ${value}`).join(" / ")}`),
             "", "选档依据:", ...selectionNotes(result).map(note => `- ${note}`),
