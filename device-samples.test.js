@@ -75,7 +75,7 @@ test("未配置和不安全 endpoint 不发送，非法值也不发送", async (
 test("浏览器配置区分本地数据库接口与正式 Cloudflare 接口", () => {
     const configPath = `${__dirname}/sample-config.js`;
     assert.equal(fs.existsSync(configPath), true, "上传配置尚未实现");
-    for (const [hostname, expected] of [["127.0.0.1", "http://127.0.0.1:8787/api/device-samples"], ["littonishir.github.io", "https://hoshino-hoc-device-samples.hoshino-hoc.workers.dev/api/device-samples"]]) {
+    for (const [hostname, expected] of [["127.0.0.1", "http://127.0.0.1:8787/api/device-samples"], ["littonishir.github.io", "https://hoshino-hoc.pages.dev/api/device-samples"]]) {
         const window = { location: { hostname } };
         vm.runInNewContext(fs.readFileSync(configPath, "utf8"), { window });
         assert.equal(window.MarikoSampleConfig.endpoint, expected);
