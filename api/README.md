@@ -8,7 +8,17 @@
 - [正式数据库后台](https://dash.cloudflare.com/c636db5fa24042aa0368b30589eb8861/workers/d1/databases/1144835d-67d5-4b93-8e34-0c817910633e)
 - 本地 `npm run db:list` 只查询本地库，不代表线上数据；正式数据在上面的 D1 后台查看。
 
-部分网络不能访问 `workers.dev`。这类请求会静默失败，配置生成仍正常；需要提高此类网络的采集覆盖时，可绑定自有域名后更新 endpoint，当前账号尚无已接入域名。
+## 私有网页后台
+
+[打开设备参数后台](https://hoshino-hoc-device-samples.hoshino-hoc.workers.dev/admin)。输入管理密码后查看参数、接收次数和北京时间，可按内存 ID/机型筛选，25 条一页。点“刷新”重新读取；点“退出登录”立即撤销当前会话。没有用户名、公开注册或数据修改功能。
+
+初始密码由加密随机数生成，只保存在本机项目外的登录信息文件，仓库不包含密码。服务器通过 Worker secret `ADMIN_PASSWORD_HASH` 校验密码；会话 8 小时有效，Cookie 为 Secure/HttpOnly/SameSite=Strict，数据库只存会话令牌哈希。未登录读管理 API 返回 401，登录限流为每来源 IP 约5次/分钟。`/admin/api/samples` 仅允许有效管理会话读取。
+
+本地后台地址 `http://127.0.0.1:8787/admin`，使用被 Git 忽略的 `.dev.vars` 中密码哈希。`npm run db:init` 会增量创建 `admin_sessions` 表，不更改样本。
+
+**修改或丢失密码**：重新生成高强度密码，计算 SHA-256 并更新 Worker 的 `ADMIN_PASSWORD_HASH` Secret；同时在正式 D1 执行 `DELETE FROM admin_sessions;` 撤销全部旧会话，再登录新密码。只更换密码哈希不会自动撤销旧 Cookie，原有会话最长仍有效8小时。不要把明文密码或会话 Cookie 放进仓库、URL 或分享链接。
+
+部分网络不能访问 `workers.dev`。这类请求会静默失败，配置生成仍正常；需要提高此类网络的采集覆盖时，可绑定自有域名后更新 endpoint，当前账号尚无已接入域名。后台也受相同的网络可达性影响。
 
 ## 本地运行
 

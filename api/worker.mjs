@@ -1,3 +1,5 @@
+import { handleAdmin } from './admin.mjs';
+
 const MAX_BYTES = 2048;
 const FIELDS = ["schemaVersion", "appVersion", "cpuSpeedo", "gpuSpeedo", "socSpeedo", "ramId", "model", "mode", "goal"];
 const CONTROLS = /[\p{Cc}\p{Cf}]/u;
@@ -52,6 +54,7 @@ function validate(value) {
 export default {
     async fetch(request, env) {
         const { pathname } = new URL(request.url);
+        if (pathname === '/admin' || pathname.startsWith('/admin/')) return handleAdmin(request, env);
         if (pathname === "/healthz" && request.method === "GET") {
             return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
         }

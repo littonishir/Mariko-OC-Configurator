@@ -14,3 +14,9 @@ CREATE TABLE IF NOT EXISTS device_samples (
     UNIQUE (cpu_speedo, gpu_speedo, soc_speedo, ram_id, model)
 );
 CREATE INDEX IF NOT EXISTS device_samples_last_seen ON device_samples(last_seen_at);
+CREATE TABLE IF NOT EXISTS admin_sessions (
+    token_hash TEXT PRIMARY KEY NOT NULL,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS admin_sessions_expires ON admin_sessions(expires_at);

@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
             env: {
                 DB: bindings.d1({ name: "hoshino-hoc-samples", id: local ? "00000000-0000-0000-0000-000000000001" : databaseId }),
                 INTAKE_LIMITER: bindings.rateLimit({ namespace: "11032026", simple: { limit: 120, period: 60 } }),
+                ADMIN_LOGIN_LIMITER: bindings.rateLimit({ namespace: "11032027", simple: { limit: 5, period: 60 } }),
+                ADMIN_PASSWORD_HASH: bindings.secret(),
                 ALLOWED_ORIGINS: bindings.text(local ? "http://127.0.0.1:18765,http://localhost:18765" : "https://littonishir.github.io")
             },
             observability: {

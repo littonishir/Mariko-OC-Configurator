@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { Miniflare, Log, LogLevel, convertV4MiniflareOptions } from "miniflare";
 
 const origin = "https://littonishir.github.io";
@@ -12,7 +13,7 @@ async function setup(t, { limit = 120, withDB = true, withLimiter = true, withSc
     const clock = timestamps ? `const testTimes=${JSON.stringify(timestamps)};const RealDate=globalThis.Date;globalThis.Date=class extends RealDate{toISOString(){return testTimes.shift() ?? super.toISOString();}};` : "";
     const script = clock + readFileSync(scriptPath, "utf8");
     const mf = new Miniflare(convertV4MiniflareOptions({
-        modules: true, script, compatibilityDate: "2026-11-03",
+        modules: ['worker.mjs','admin.mjs','admin-page.mjs'].map(name=>({type:'ESModule',path:fileURLToPath(new URL(name,import.meta.url)),contents:name==='worker.mjs'?script:readFileSync(new URL(name,import.meta.url),'utf8')})), compatibilityDate: "2026-11-03",
         d1Databases: withDB ? ["DB"] : [],
         ratelimits: withLimiter ? { INTAKE_LIMITER: { namespace_id: "11032026", simple: { limit, period: 60 } } } : {},
         bindings: { ALLOWED_ORIGINS: origin },
