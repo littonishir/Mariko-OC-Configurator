@@ -1,93 +1,27 @@
 (function (root, factory) {
-    const api = factory();
+    const api = factory(typeof module === "object" && module.exports
+        ? require("./frequency-plan.js") : root.MarikoFrequencyPlan);
     if (typeof module === "object" && module.exports) module.exports = api;
     root.MarikoConfigurator = api;
-}(typeof globalThis !== "undefined" ? globalThis : this, function () {
+}(typeof globalThis !== "undefined" ? globalThis : this, function (frequencyPlan) {
     "use strict";
 
+    const HISTORY_NOTICE = "旧版曾统一推荐降压、紧时序和高频，已有用户反馈无法启动或进不去系统。请停用旧截图与旧推荐，先回退到自己已验证可启动的配置，再逐项排查。";
+    const BASELINE_NOTE = "适用 HOC 2.6.0。先通过指南安全上限，再逐项应用进阶性能；最低电压保留 CPU 620/750、GPU 610 mV，DVB 0、默认时序。底座按官方充电器条件选档，普通 USB 沿用掌机配置。";
+    const MODE_LABELS = { handheld: "掌机", plugged: "底座" };
     const DVB_SHIFT_MAX = 8;
-
+    // 只识别颗粒名称；别名不能确定这台机器的稳定频率、电压或时序。
     const RAM_PROFILES = [
-        {
-            id: "WT:B",
-            aliases: ["WT:B"],
-            tier: "GOD",
-            range: [3066, 3200],
-            vdd2: 1175,
-            vddq: 600,
-            common: "(4-4-5) 4-2-6-5-6",
-            tight: "(6-6-7) 5-2-6-5-6"
-        },
-        {
-            id: "NEI / NEE / x267",
-            aliases: ["NEI", "NEE", "X267"],
-            tier: "GOD",
-            range: [3100, 3300],
-            vdd2: 1175,
-            vddq: 640,
-            common: "(3-3-2) 1-5-5-4-6",
-            tight: "(4-4-4) 2-7-6-5-6"
-        },
-        {
-            id: "AA-MGCL / AA-MGCR",
-            aliases: ["AA-MGCL", "AA-MGCR", "MGCL", "MGCR"],
-            tier: "S",
-            range: [2766, 3100],
-            vdd2: 1175,
-            vddq: 640,
-            common: "(4-4-5) 4-5-5-6-6",
-            tight: "(4-4-8) 5-5-6-7-6"
-        },
-        {
-            id: "WT:E",
-            aliases: ["WT:E"],
-            tier: "A?",
-            range: [2500, 3033],
-            vdd2: 1175,
-            vddq: 600,
-            common: "(2-2-2) 1-4-4-4-6",
-            tight: "(3-5-3) 2-5-4-5-6"
-        },
-        {
-            id: "AM-MGCJ",
-            aliases: ["AM-MGCJ", "MGCJ"],
-            tier: "B",
-            range: [2633, 2933],
-            vdd2: 1175,
-            vddq: 640,
-            common: "(3-2-4) 1-4-4-4-6",
-            tight: "(4-3-8) 1-5-4-4-6"
-        },
-        {
-            id: "WT:F",
-            aliases: ["WT:F"],
-            tier: "C",
-            range: [2633, 2800],
-            vdd2: 1175,
-            vddq: 600,
-            common: "(4-4-2) 4-4-6-3-6",
-            tight: "(5-5-4) 4-5-6-5-6"
-        },
-        {
-            id: "AB-MGCL",
-            aliases: ["AB-MGCL"],
-            tier: "D",
-            range: [2500, 2766],
-            vdd2: 1175,
-            vddq: 640,
-            common: "(4-4-4) 3-4-5-6-6",
-            tight: "(4-4-8) 4-5-6-8-6"
-        },
-        {
-            id: "NME",
-            aliases: ["NME"],
-            tier: "E",
-            range: [2300, 2766],
-            vdd2: 1175,
-            vddq: 640,
-            common: "(2-2-3) 0-1-2-2-6",
-            tight: "(5-3-4) 1-8-3-3-6"
-        }
+        { id: "WT:B", aliases: ["WT:B"], ratingMbps: 4266, advancedClock: 2666, vddq: 600 },
+        { id: "NEE / x267", aliases: ["NEE", "X267"], ratingMbps: 4266, advancedClock: 2666, vddq: 640 },
+        { id: "NEI", aliases: ["NEI"], ratingMbps: null, advancedClock: 2666, vddq: 640 },
+        { id: "AA-MGCL / MGCL", aliases: ["AA-MGCL", "MGCL"], ratingMbps: 4266, advancedClock: 2666, vddq: 640 },
+        { id: "AA-MGCR / MGCR", aliases: ["AA-MGCR", "MGCR"], ratingMbps: null, advancedClock: 2666, vddq: 640 },
+        { id: "WT:E", aliases: ["WT:E"], ratingMbps: 4266, advancedClock: 2400, vddq: 600 },
+        { id: "AM-MGCJ", aliases: ["AM-MGCJ", "MGCJ"], ratingMbps: 3733, advancedClock: 2400, vddq: 640 },
+        { id: "WT:F", aliases: ["WT:F"], ratingMbps: 4266, advancedClock: 2400, vddq: 600 },
+        { id: "AB-MGCL", aliases: ["AB-MGCL"], ratingMbps: 4266, advancedClock: 2400, vddq: 640 },
+        { id: "NME", aliases: ["NME"], ratingMbps: 3733, advancedClock: 2133, vddq: 640 }
     ];
 
     function normalizeRamId(value) {
@@ -101,30 +35,18 @@
         )) || null;
     }
 
-    function speedoGrade(value) {
-        if (value < 1450) return { label: "低于常见范围", tone: "warn" };
-        if (value > 1810) return { label: "高于常见范围", tone: "warn" };
-        if (value >= 1650) return { label: "良好", tone: "good" };
-        return { label: "常见范围", tone: "neutral" };
-    }
-
-    function ramStepMode(targetClock) {
-        const jedecClocks = [1866, 1996, 2133, 2400, 2666, 2933, 3200];
-        if (jedecClocks.includes(targetClock)) return "JEDEC";
-        return targetClock % 100 === 0 ? "100 MHz" : "66 MHz";
-    }
-
     function validateInput(input) {
         const errors = [];
         ["cpuSpeedo", "gpuSpeedo", "socSpeedo"].forEach((key) => {
             const value = Number(input[key]);
-            if (!Number.isFinite(value) || value < 1200 || value > 2000) {
-                errors.push(`${key} 必须是 1200 到 2000 之间的数字`);
+            if (!Number.isInteger(value) || value < 1200 || value > 2000) {
+                errors.push(`${key} 必须是 1200 到 2000 之间的整数`);
             }
         });
         if (!String(input.ramId || "").trim()) errors.push("请输入 RAM Module ID");
+        if (input.ramId.length > 32) errors.push("RAM Module ID 最多 32 个字符，请只填写颗粒标识");
         if (!["regular", "lite"].includes(input.model)) errors.push("请选择正确的机型");
-        if (!["handheld", "plugged"].includes(input.mode)) errors.push("请选择使用场景");
+        if (!Object.hasOwn(MODE_LABELS, input.mode)) errors.push("请选择使用场景");
         if (!["balanced", "performance"].includes(input.goal)) errors.push("请选择调校目标");
         return errors;
     }
@@ -143,138 +65,86 @@
         if (errors.length) return { ok: false, errors };
 
         const ram = findRamProfile(input.ramId);
-        const isLite = input.model === "lite";
         const isHandheld = input.mode === "handheld";
         const isPerformance = input.goal === "performance";
-        const timingPresetName = isPerformance ? "ST" : "Common";
-        const timingPresetValue = ram
-            ? (isPerformance ? ram.tight : ram.common)
-            : null;
-        const ramCap = isLite ? 2800 : Number.POSITIVE_INFINITY;
-        const ramTarget = 2400;
-        let ramTuningTarget = 2400;
-
-        if (isPerformance) {
-            if (isHandheld) {
-                ramTuningTarget = 2500;
-            } else if (ram) {
-                ramTuningTarget = Math.max(2400, Math.min(ram.range[0], ramCap));
-            } else {
-                ramTuningTarget = Math.min(2666, ramCap);
-            }
-        }
-        if (ramTuningTarget === 2533) ramTuningTarget = 2500;
-
-        const cpuClock = isHandheld ? (isLite ? 1785 : 1963) : 2397;
-        const gpuClock = isHandheld
-            ? (isLite ? 921 : 998)
-            : 1152;
-        const batteryLimit = isLite ? 6.5 : 8.6;
+        const frequencies = frequencyPlan.selectFrequencies(input, ram);
         const warnings = [
-            "该结果是安全起点和调参目标，不是稳定性保证；每台芯片体质都不同。",
-            "RAM 不稳定可能导致 emuNAND、sysNAND 或 SD 卡损坏，务必先备份并在 emuNAND 测试。"
+            HISTORY_NOTICE,
+            "生成配置不是本机实测结果；逐项检查冷启动、休眠和实际游戏负载。",
+            "HOC 默认参数不等于 HOS 原厂设置，也不保证任何一台机器稳定；GPU HiOPT 仍是 HOC 的电压表，不代表完全无降压。",
+            "Speedo 不能单独确定稳定频率、降压等级或最低电压，识别 RAM 颗粒也不能保证高频稳定。",
+            "超频或内存不稳定可能导致死机、无法启动以及 emuNAND、sysNAND 或 SD 卡数据损坏；先备份并确认恢复方法，再在 emuNAND 验证。"
         ];
+        if (!ram) warnings.push("未识别 RAM ID；RAM 保持指南档 1866 MHz 和默认参数，查明颗粒前不额外升频。");
+        if (!frequencies.cpu.inRange) warnings.push("CPU Speedo 超出本工具 Mariko 参考范围（1300–1849），请核对录入；CPU 沿用指南频率。");
+        if (!frequencies.gpu.inRange) warnings.push("GPU Speedo 超出 HOC Mariko 分档参考范围（1300–1849），请核对录入与机型；GPU 保持保守频率。");
+        if (isPerformance && frequencies.ram.requestedClock > frequencies.clocks.ramTarget) warnings.push(`颗粒经验档为 ${frequencies.ram.requestedClock} MHz；为保留 GPU 最低 610 mV，本次内存下调至 ${frequencies.clocks.ramTarget} MHz。`);
+        if (isPerformance && frequencies.cpu.highUv) warnings.push("CPU 高频降压 1 用于开启更高频率范围，Speedo 无法保证该降压等级稳定；若无法启动或异常，恢复高频降压 0 和指南配置，不继续增加等级。");
+        if (input.model === "lite") warnings.push("Lite 的供电与散热条件不同，不能照搬 OLED／续航版的高频结果；插电也不代表具备底座散热条件。");
 
-        if (!ram) {
-            warnings.push("未识别 RAM ID，已采用保守通用参数，不提供颗粒专属时序。");
-        } else {
-            warnings.push(`已应用 ${ram.id} 的文档 ${timingPresetName} 时序；若不稳定，先恢复 Common 或默认 Timing Reductions。`);
+        const tuningNotes = {
+            ram: [
+                "指南档 RAM 1866 MHz，DVB 0、高性能关闭、默认延迟、时序缩减 t1–t8 及其他时序微调保持默认 0。",
+                "已有无法启动或卡死问题时，先回到自己已验证配置；必要时用 1600 MHz 排查，不能启动时不要继续升频。"
+            ],
+            cpu: [
+                `指南档 CPU ${isHandheld ? 1581 : 1785} MHz，低频／高频降压均为 0；加速频率独立为 1963.5 MHz，可能暂时高于运行档。`,
+                "先验证冷启动、休眠唤醒及游戏负载，再单独测试 CPU 升频或降压，每次只改变一项；不凭 Speedo 推算最低电压。"
+            ],
+            gpu: [
+                `指南档 GPU ${isHandheld ? 614.4 : 768} MHz，HiOPT、最低电压 610 mV、电压偏移 0。`,
+                "CPU 和 RAM 保持已验证值，单独测试 GPU；出现花屏、卡死或休眠异常立即回退，不统一推荐额外降压。"
+            ]
+        };
+        if (isPerformance) {
+            tuningNotes.ram = [
+                `RAM 运行路线：${frequencies.ram.route.join(" → ")} MHz。${ram ? `参考 ${ram.id} 的指南经验，再检查 HOC GPU/RAM 电压关系；经验频率不是这台机器的实测结果。` : "颗粒未识别，保持指南1866档。"}`,
+                `颗粒 VDDQ 建议 ${frequencies.ram.vddq} mV，VDD2 1175 mV；先验证这项，再逐档升频。DVB 0、默认延迟、默认时序、高性能关闭，不套用 Common/ST。`
+            ];
+            tuningNotes.cpu = [
+                `CPU 运行路线：${frequencies.cpu.route.join(" → ")} MHz；低频降压 0、高频降压 ${frequencies.cpu.highUv}。超过 1963.5 MHz 才使用高频降压 1，先单独验证降压再升频；不能稳定则回退指南档。`,
+                "CPU 加速频率仍保持 HOC 默认 1963.5 MHz，可能短暂高于所选运行档；先检查实际时钟。"
+            ];
+            tuningNotes.gpu = [
+                `GPU 运行路线：${frequencies.gpu.route.join(" → ")} MHz；使用 HiOPT、最低电压 610 mV、偏移 0，选档同时考虑机型和供电场景。`,
+                "GPU 与 RAM 可能相互影响；各项分别通过后再检查组合负载、休眠与冷启动，异常回退上一档。"
+            ];
         }
-        if (input.cpuSpeedo < 1450 || input.gpuSpeedo < 1450 || input.socSpeedo < 1450) {
-            warnings.push("至少一项 Speedo 低于指南常见范围，降压和高频余量可能较小。");
-        }
-        if (input.cpuSpeedo > 1810 || input.gpuSpeedo > 1810 || input.socSpeedo > 1810) {
-            warnings.push("至少一项 Speedo 高于指南常见范围，请确认录入值无误。");
-        }
-        if (!isHandheld && isPerformance) {
-            warnings.push("当前配置保守使用 1152 MHz；只有关闭 GPU调度且确认 1228 MHz 电压低于 800 mV 后，才测试 1228 MHz。");
-        }
-        if (ramTuningTarget > 3000) warnings.push("后续目标超过 3000 MHz，更容易发生 PLL掉频，必须监控实际内存时钟。");
-        if (isHandheld) warnings.push(`掌机长时间整机功耗建议控制在 ${batteryLimit} W 以下。`);
 
         return {
             ok: true,
             input,
             diagnosis: {
-                cpu: speedoGrade(input.cpuSpeedo),
-                gpu: speedoGrade(input.gpuSpeedo),
-                soc: speedoGrade(input.socSpeedo),
-                ram: ram ? { label: "已识别", tone: "good" } : { label: "未知", tone: "warn" }
+                cpu: { label: "电压表估算参考", tone: "neutral" },
+                gpu: { label: "电压表估算参考", tone: "neutral" },
+                soc: { label: "仅记录，不判断稳定", tone: "neutral" },
+                ram: ram ? { label: "已识别，不代表稳定", tone: "neutral" } : { label: "未识别", tone: "warn" }
             },
-            clocks: {
-                cpu: cpuClock,
-                gpu: gpuClock,
-                ramStart: 2133,
-                ramTarget,
-                ramTuningTarget,
-                powerLimit: isHandheld ? batteryLimit : (isLite ? 12 : 18)
-            },
+            clocks: frequencies.clocks,
+            frequencyPlan: frequencies,
+            // 与 HOC 2.6.0-rel customize.cpp 对齐；并非 HOS 原厂参数或实机稳定性结论。
             cpu: {
-                boostClock: 2601,
-                uvTable: 1683,
-                lowUvStart: 4,
-                highUvStart: 5,
-                lowVmin: "590 mV",
-                highVmin: "750 mV",
-                voltageLimit: "1120 mV"
+                boostClock: 1963.5, maxClock: frequencies.cpu.maxClock, uvTable: 1683,
+                lowUvStart: 0, highUvStart: frequencies.cpu.highUv, lowVmin: "620 mV",
+                highVmin: "750 mV", voltageLimit: "1120 mV"
             },
-            gpu: {
-                table: "高降压",
-                vmin: "580 mV",
-                vmax: "800 mV",
-                voltageOffset: "0"
-            },
+            gpu: { table: "HiOPT（HOC 默认）", vmin: "610 mV", vmax: "800 mV", voltageOffset: "0" },
             ram: {
-                recognized: Boolean(ram),
-                id: ram ? ram.id : input.ramId,
-                tier: ram ? ram.tier : "未知",
-                expectedRange: ram ? `${ram.range[0]}-${ram.range[1]} MHz` : "未知，保守测试",
-                vdd2: ram ? `${ram.vdd2} mV` : "1175 mV",
-                vddq: ram ? `${ram.vddq} mV` : "保持默认/查明颗粒后设置",
-                common: ram ? ram.common : "使用默认 Common Timings",
-                tight: ram ? ram.tight : "暂不使用 ST Timings",
-                dvbShift: ram ? DVB_SHIFT_MAX : 5,
-                socVmax: "默认",
-                hpMode: "关闭",
-                stepMode: ramStepMode(ramTarget),
-                maxClock: `${ramTarget} MHz`,
-                latencyEditor: "2133 Latency Max",
-                timingReductions: timingPresetValue
-                    ? `${timingPresetName}: ${timingPresetValue}`
-                    : "默认"
+                recognized: Boolean(ram), id: ram ? ram.id : input.ramId,
+                vdd2: "1175 mV", vddq: `${frequencies.ram.vddq} mV`, dvbShift: 0, socVmax: "默认（0）",
+                hpMode: "关闭", stepMode: "JEDEC", maxClock: `${frequencies.clocks.ramTarget} MHz`,
+                latencyEditor: "默认",
+                timingReductions: "默认（t1–t8 全部 0；其他时序微调也保持默认）"
             },
-            risk: isPerformance ? "进阶调校" : "指南安全上限",
-            tuningNotes: {
-                cpu: [
-                    "CPU低频降压从 4、CPU高频降压从 5 开始逐级验证；不能启动或不稳定时降低降压等级。",
-                    "只有 CPU高频降压 1 仍不稳定时，才把 CPU降压模式从 1683 MHz 分界频率改为 1581 MHz。",
-                    "低频不稳定时可把 CPU低频最低电压提高到 610-620 mV；高内存频率可能需要 850-870 mV CPU高频最低电压。"
-                ],
-                gpu: [
-                    "GPU电压偏移首轮保持 0；基础配置稳定后再按 5、10、15、20、25 逐级测试，部分 GPU 必须保持 0。",
-                    isHandheld
-                        ? `当前 ${gpuClock} MHz 是指南给出的掌机安全上限，长时间使用仍需监控整机功耗。`
-                        : "只有在 GPU调度关闭且 1228 MHz 电压低于 800 mV 时才测试 1228 MHz，否则保持 1152 MHz。"
-                ],
-                ram: [
-                    ram
-                        ? `已按文档应用 ${ram.id} ${timingPresetName} 时序，并将 DVB偏移设为 ${DVB_SHIFT_MAX}；先验证该组合稳定性。`
-                        : "未识别 RAM 颗粒，保持默认内存时序优化，并使用 DVB偏移 5。",
-                    isPerformance && ramTuningTarget > ramTarget
-                        ? `2400 MHz 基线稳定后，再逐级测试到 ${ramTuningTarget} MHz；该值是调参目标，不是稳定保证。`
-                        : isHandheld
-                            ? "当前 2400 MHz 是指南给出的掌机续航与性能平衡点。"
-                            : "插电模式仍从 2400 MHz 保守基线开始，确认稳定后再单独提高频率。",
-                    "文档默认在 1866 MHz 以上使用 2133 tRWL，因此内存延迟编辑使用 2133 Latency Max。",
-                    ram
-                        ? isPerformance
-                            ? "ST 不稳定时，按 t8 → t1 → t2 → t3 → t6 → t7 → t4 → t5 顺序逐项放宽；仍不稳定则退回 Common。"
-                            : `Common 稳定后可测试 ST 时序 ${ram.tight}；失败时退回 Common。`
-                        : "识别 RAM 颗粒后再测试对应的 Common/ST 时序。",
-                    `Common/ST 稳定后再把 DVB偏移从 ${DVB_SHIFT_MAX} 逐步降低到 2-4。`,
-                    "稳定后再开启高性能模式；2533 MHz 可能需要更宽松时序，3000 MHz 以上需监控 PLL掉频。"
-                ]
-            },
+            risk: isPerformance ? "进阶性能" : "指南安全上限",
+            tuningNotes,
+            validationSteps: [
+                "先备份 NAND、SD 卡、当前可启动的 loader.kip 与 HOC 配置，并确认能进入 Hekate 和从电脑恢复备份；先保留已验证可启动的配置。",
+                "按 HOC 对应页面区分调频器运行档和 KIP 设置；KIP 更改后必须保存 KIP、完全重启。检查全局、掌机／插电及各游戏配置，确认旧超频档没有自动覆盖运行值。",
+                "先通过指南安全上限（RAM1866、CPU与GPU使用指南档），再逐项设置颗粒电压、CPU降压或频率；不要同时更改。监控实际时钟、温度与功耗，异常时恢复指南档，必要时RAM1600排查。",
+                "每次只改一项，记录结果，逐项验证冷启动、休眠唤醒及常玩的游戏；单次进桌面或跑分通过不等于长期稳定。",
+                "回退：遇到无法启动、花屏、卡死或休眠异常，停止测试，通过 Hekate／读卡器恢复先前已验证的 KIP 与 HOC 配置，再完全重启；若基线仍异常，先排查版本和环境，不继续加压或升频。"
+            ],
             warnings
         };
     }
@@ -294,7 +164,7 @@
                     ["内存VDD2电压", result.ram.vdd2],
                     ["内存VDDQ电压", result.ram.vddq],
                     ["步进模式", result.ram.stepMode],
-                    ["内存最高频率", result.ram.maxClock],
+                    ["内存最高频率（KIP上限）", result.ram.maxClock],
                     ["内存延迟编辑", result.ram.latencyEditor],
                     ["内存时序优化", result.ram.timingReductions]
                 ]
@@ -308,8 +178,8 @@
                     ["CPU低频最低电压", result.cpu.lowVmin],
                     ["CPU高频最低电压", result.cpu.highVmin],
                     ["CPU最高电压", result.cpu.voltageLimit],
-                    ["CPU最高频率", `${result.clocks.cpu} MHz`],
-                    ["CPU加速频率", `${result.cpu.boostClock} MHz`]
+                    ["CPU最高频率（KIP上限）", `${result.cpu.maxClock} MHz`],
+                    ["CPU加速频率（KIP）", `${result.cpu.boostClock} MHz`]
                 ]
             },
             {
@@ -324,23 +194,46 @@
         ];
     }
 
+    function selectionNotes(result) {
+        if (result.input.goal !== "performance") return ["指南档 RAM1866、CPU 掌机1581／插电1785、GPU 掌机614.4／插电768 MHz；CPU降压0/0、默认时序。名称沿用原版，不代表保证所有机器稳定；CPU加速仍可暂时到1963.5 MHz。"];
+        const plan = result.frequencyPlan;
+        return [
+            !plan.cpu.inRange ? "CPU：Speedo 超出参考范围，沿用指南频率，不外推电压与更高降压等级。"
+                : plan.cpu.matchedBudget ? `CPU：Speedo ${result.input.cpuSpeedo}，TBREAK1683 表估算约 ${plan.cpu.estimatedMv} mV；本工具以 ${plan.cpu.budgetMv} mV 预算筛选到 ${result.clocks.cpu} MHz。`
+                    : "CPU：未找到符合筛选预算的升频档，沿用指南频率。",
+            plan.gpu.estimatedMv === null ? "GPU：Speedo 超出 Mariko 参考范围，保留保守频率。"
+                : plan.gpu.matchedBudget ? `GPU：Speedo ${result.input.gpuSpeedo}，HiOPT 表在 0–90°C 范围估算约 ${plan.gpu.estimatedMv} mV；以 ${plan.gpu.budgetMv} mV 预算及场景范围筛选到 ${result.clocks.gpu} MHz。`
+                    : "GPU：未找到符合筛选预算的升频档，沿用指南频率。",
+            `RAM：按颗粒指南经验及 HOC GPU 分档 ${plan.gpu.bracket === null ? "未识别" : plan.gpu.bracket}，建议 ${result.clocks.ramTarget} MHz，VDDQ ${plan.ram.vddq} mV；保留 GPU 最低610 mV，SoC Speedo 不用于推算颗粒极限。`,
+            "电压估算只是选档参考，不是应填写的电压，也不是实测结果；预算是本工具的筛选策略，不是上游安全线。实际电压、温度和功耗以监控为准。",
+            ...(result.clocks.ramTarget % 1 === 0 && ![1866,1996,2133,2400,2666,2933,3200].includes(result.clocks.ramTarget)
+                ? [`${result.clocks.ramTarget} MHz 是自定义内存最大档，HOC 会将它附加到 JEDEC 频率列表，步进模式仍使用 JEDEC。`]
+                : []),
+            ...(result.clocks.ramTarget >= 2533
+                ? ["该内存频率跨过 2533 MHz 时序阈值；保持默认时序不代表绕过该变化，需单独验证，异常退到 2400 MHz。"]
+                : [])
+        ];
+    }
+
     function toText(result) {
         if (!result || !result.ok) return "无法生成配置";
         return [
-            "Mariko OC 推荐配置",
-            `场景: ${result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED"} · ${result.input.mode === "handheld" ? "掌机" : "插电/底座"} · ${result.risk}`,
-            "",
-            `[时钟] CPU ${result.clocks.cpu} MHz / GPU ${result.clocks.gpu} MHz / RAM ${result.clocks.ramStart} → ${result.clocks.ramTarget} MHz`,
+            "星野無上 HOC 配置助手 · 2026-11-02 修正版",
+            `场景: ${result.input.model === "lite" ? "Switch Lite" : "续航版 / OLED"} · ${MODE_LABELS[result.input.mode]} · ${result.risk}`,
+            `硬件记录: CPU Speedo ${result.input.cpuSpeedo} / GPU Speedo ${result.input.gpuSpeedo} / SoC Speedo ${result.input.socSpeedo} / RAM ${result.input.ramId}`,
+            "", HISTORY_NOTICE, BASELINE_NOTE, "",
+            `[建议频率] CPU ${result.clocks.cpu} MHz / GPU ${result.clocks.gpu} MHz / RAM ${result.clocks.ramTarget} MHz`,
             ...configSections(result).map(({ textLabel, rows }) =>
                 `[${textLabel}] ${rows.map(([label, value]) => `${label} ${value}`).join(" / ")}`),
-            "",
-            "后续调参说明:",
+            "", "选档依据:", ...selectionNotes(result).map(note => `- ${note}`),
+            "", "验证顺序与回退:",
+            ...result.validationSteps.map((step, index) => `${index + 1}. ${step}`),
+            "", "后续调参说明:",
             ...Object.entries(result.tuningNotes).flatMap(([scope, notes]) => notes.map((note) => `- [${scope.toUpperCase()}] ${note}`)),
-            "",
-            "注意:",
+            "", "注意:",
             ...result.warnings.map((warning) => `- ${warning}`)
         ].join("\n");
     }
 
-    return { DVB_SHIFT_MAX, RAM_PROFILES, findRamProfile, recommend, configSections, toText };
+    return { HISTORY_NOTICE, BASELINE_NOTE, MODE_LABELS, DVB_SHIFT_MAX, RAM_PROFILES, findRamProfile, recommend, configSections, selectionNotes, toText };
 }));

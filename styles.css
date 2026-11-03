@@ -83,9 +83,9 @@ fieldset { min-width: 0; margin: 18px 0 0; padding: 0; border: 0; }
 .profile-meta { display: flex; flex-wrap: wrap; gap: 7px; margin: -8px 0 22px 46px; }
 .profile-meta span { padding: 5px 9px; border-radius: 99px; background: #20272a; color: #bbc3c2; font-size: 11px; }
 .diagnosis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.diagnosis-item { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #0c1012; }
+.diagnosis-item { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #0c1012; }
 .diagnosis-item > span { display: block; color: var(--muted); font-size: 10px; }
-.diagnosis-item strong { display: block; margin: 5px 0 9px; font: 750 18px/1 monospace; }
+.diagnosis-item strong { display: block; margin: 5px 0 9px; font: 750 18px/1 monospace; overflow-wrap: anywhere; }
 .diagnosis-item em { font-size: 10px; font-style: normal; font-weight: 800; }
 .good { color: var(--acid); } .warn { color: var(--orange); } .neutral { color: #aeb7b6; }
 .clock-strip { display: grid; grid-template-columns: repeat(3, 1fr); margin: 18px 0; border: 1px solid #3a471f; border-radius: 16px; background: linear-gradient(120deg, rgba(200,241,91,.12), rgba(200,241,91,.025)); }

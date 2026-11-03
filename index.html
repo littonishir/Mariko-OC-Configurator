@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <title>星野無上HOC配置助手</title>
-    <link rel="stylesheet" href="styles.css?v=rollback-b3f1d31-20261102">
+    <link rel="stylesheet" href="styles.css?v=20261103-release1">
 </head>
 <body>
     <main class="shell">
@@ -43,7 +43,7 @@
 
                 <label class="full-field">
                     <span>RAM Module ID</span>
-                    <input name="ramId" type="text" value="WT:F" list="ram-options" autocomplete="off" required>
+                    <input name="ramId" type="text" value="WT:F" list="ram-options" maxlength="32" autocomplete="off" required>
                     <datalist id="ram-options">
                         <option value="WT:B"></option>
                         <option value="NEI"></option>
@@ -71,7 +71,7 @@
                         <legend>场景</legend>
                         <div class="segmented">
                             <label><input type="radio" name="mode" value="handheld" checked><span>掌机</span></label>
-                            <label><input type="radio" name="mode" value="plugged"><span>插电 / 底座</span></label>
+                            <label><input type="radio" name="mode" value="plugged"><span>底座</span></label>
                         </div>
                     </fieldset>
                 </div>
@@ -130,7 +130,10 @@
         </div>
     </template>
 
-    <script src="configurator.js?v=rollback-b3f1d31-20261102"></script>
-    <script src="app.js?v=rollback-b3f1d31-20261102"></script>
+    <script src="frequency-plan.js?v=20261103-release1"></script>
+    <script src="configurator.js?v=20261103-release1"></script>
+    <script src="sample-config.js?v=20261103-release1"></script>
+    <script src="device-samples.js?v=20261103-release1"></script>
+    <script src="app.js?v=20261103-release1"></script>
 </body>
 </html>
