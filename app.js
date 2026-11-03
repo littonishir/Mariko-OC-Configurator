@@ -7,6 +7,10 @@
     const errorBox = document.querySelector("#form-error");
     const { BASELINE_NOTE } = window.MarikoConfigurator;
     let latestResult = null;
+    let reportDeviceSample = () => Promise.resolve(false);
+    try {
+        if (window.MarikoDeviceSamples) reportDeviceSample = window.MarikoDeviceSamples.createReporter(window.MarikoSampleConfig);
+    } catch (_) { /* 上传模块不可用时仍保留全部本地功能。 */ }
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>'"]/g, (character) => ({
@@ -449,7 +453,10 @@
 
     form.addEventListener("submit", (event) => {
         event.preventDefault();
-        generateResult(true);
+        if (generateResult(true)) {
+            try { Promise.resolve(reportDeviceSample(latestResult.input)).catch(() => {}); }
+            catch (_) { /* 上传不得影响生成、复制和保存。 */ }
+        }
     });
 
     form.addEventListener("change", () => {

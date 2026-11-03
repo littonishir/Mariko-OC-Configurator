@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const configurator = require("./configurator.js");
 
 // 仅提供控制器依赖的 DOM 边界，不模拟推荐逻辑或复制成功行为。
-function controller({ clipboardFails = false, fallbackCopies = true } = {}) {
+function controller({ clipboardFails = false, fallbackCopies = true, reporterThrows = false, reporterRejects = false } = {}) {
     function node() {
         return {
             textContent: "", innerHTML: "", hidden: true, children: [], listeners: {},
@@ -32,6 +32,7 @@ function controller({ clipboardFails = false, fallbackCopies = true } = {}) {
         "#fill-example": node()
     };
     const copied = [];
+    const reports = [];
     const body = node();
     body.appendChild = child => body.children.push(child);
     const document = {
@@ -47,13 +48,21 @@ function controller({ clipboardFails = false, fallbackCopies = true } = {}) {
     }
     vm.runInNewContext(fs.readFileSync(require.resolve("./app.js"), "utf8"), {
         document, navigator, FormData, console,
-        window: { MarikoConfigurator: configurator, setTimeout() {} }
+        window: { MarikoConfigurator: configurator, setTimeout() {},
+            MarikoSampleConfig: { endpoint: "https://samples.example/api/device-samples", appVersion: "test" },
+            MarikoDeviceSamples: { createReporter: () => input => {
+                reports.push(input);
+                if (reporterThrows) throw new Error("reporter failed");
+                return reporterRejects ? Promise.reject(new Error("offline")) : Promise.resolve(true);
+            } }
+        }
     });
     return {
-        form, result, error, fields, copied,
+        form, result, error, fields, copied, reports,
         submit() { form.listeners.submit({ preventDefault() {} }); },
         edit(key, value) { form.elements[key].value = value; form.listeners.change(); },
-        copy() { return fields[".copy-button"].listeners.click({ currentTarget: fields[".copy-button"] }); }
+        copy() { return fields[".copy-button"].listeners.click({ currentTarget: fields[".copy-button"] }); },
+        example() { nodes["#fill-example"].listeners.click(); }
     };
 }
 
@@ -69,6 +78,35 @@ test("无效输入撤下旧配置且恢复有效输入后重新生成", () => {
     assert.equal(app.error.hidden, true);
     assert.equal(app.result.children.length, 1);
     assert.match(app.fields[".warning-box"].innerHTML, /未识别 RAM ID/);
+});
+
+test("只在显式有效生成时上传，编辑、示例和复制不上传", async () => {
+    const app = controller();
+    assert.equal(app.reports.length, 0);
+    app.example();
+    assert.equal(app.reports.length, 0);
+    app.submit();
+    assert.equal(app.reports.length, 1);
+    assert.equal(app.reports[0].cpuSpeedo, 1662);
+    app.edit("ramId", "NEE");
+    app.example();
+    await app.copy();
+    assert.equal(app.reports.length, 1);
+    app.edit("ramId", " ");
+    app.submit();
+    assert.equal(app.reports.length, 1);
+});
+
+test("上传器失败不影响生成和复制，不显示上传提示", async () => {
+    for (const options of [{ reporterThrows: true }, { reporterRejects: true }]) {
+        const app = controller(options);
+        assert.doesNotThrow(() => app.submit());
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(app.result.children.length, 1);
+        assert.equal(app.error.hidden, true);
+        await app.copy();
+        assert.equal(app.copied.length, 1);
+    }
 });
 
 test("无效输入不再允许旧回调复制上一次配置", async () => {

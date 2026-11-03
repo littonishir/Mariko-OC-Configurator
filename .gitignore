@@ -1,2 +1,11 @@
+node_modules/
+.cf/
+.cloudflare/
+dist/
+.wrangler/
+.dev.vars*
+.env
+.env.*
+!.env.example
 .DS_Store
 ._*

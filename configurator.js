@@ -7,8 +7,8 @@
     "use strict";
 
     const HISTORY_NOTICE = "旧版曾统一推荐降压、紧时序和高频，已有用户反馈无法启动或进不去系统。请停用旧截图与旧推荐，先回退到自己已验证可启动的配置，再逐项排查。";
-    const BASELINE_NOTE = "适用 HOC 2.6.0。先通过指南安全上限，再逐项应用进阶性能；最低电压保留 CPU 620/750、GPU 610 mV，DVB 0、默认时序。插电／底座按官方充电器条件选档，普通 USB 沿用掌机配置。";
-    const MODE_LABELS = { handheld: "掌机", plugged: "插电／底座" };
+    const BASELINE_NOTE = "适用 HOC 2.6.0。先通过指南安全上限，再逐项应用进阶性能；最低电压保留 CPU 620/750、GPU 610 mV，DVB 0、默认时序。底座按官方充电器条件选档，普通 USB 沿用掌机配置。";
+    const MODE_LABELS = { handheld: "掌机", plugged: "底座" };
     const DVB_SHIFT_MAX = 8;
     // 只识别颗粒名称；别名不能确定这台机器的稳定频率、电压或时序。
     const RAM_PROFILES = [
